@@ -87,145 +87,7 @@ class HomePageState extends State<HomePage> {
                   floatingActionButton: material.FloatingActionButton(
                     child: const Icon(material.Icons.gavel_rounded),
                     onPressed: () async {
-                      if (Get.find<SongListController>().songs.isEmpty) {
-                        return;
-                      }
-                      final ProgressDialog pd = ProgressDialog(context,
-                          type: ProgressDialogType.Download,
-                          isDismissible: true);
-                      pd.style(
-                        progress: 0.0,
-                        message: "正在连接...",
-                        maxProgress: 100.0,
-                        messageTextStyle: const TextStyle(
-                            fontFamily: "HYWenHei", fontSize: 18),
-                      );
-                      await pd.show();
-                      File listFile = File("./download/list.txt");
-                      if (listFile.existsSync()) {
-                        listFile.delete();
-                      }
-                      for (var song in Get.find<SongListController>().songs) {
-                        try {
-                          // params += "${song.id}.mp3|";
-                          await listFile.writeAsString(
-                              "file '${song.id}.mp3'\n",
-                              mode: FileMode.append);
-                          if (File("./download/${song.id}.mp3").existsSync()) {
-                            pd.update(
-                                progress: 100,
-                                message: "下载完成\n点击空白处关闭",
-                                isDismissible: true);
-                            continue;
-                          }
-                          Dio dio = Dio();
-                          // (dio.httpClientAdapter as DefaultHttpClientAdapter)
-                          //     .onHttpClientCreate = (client) {
-                          //   client.findProxy = (url) {
-                          //     return "PROXY localhost:7891";
-                          //   };
-                          //   //Trust certificate for https proxy
-                          //   client.badCertificateCallback = (cert, host, port) {
-                          //     return true;
-                          //   };
-                          //   return client;
-                          // };
-                          await dio.downloadUri(
-                              Uri.parse(song.url), "./download/${song.id}.mp3",
-                              onReceiveProgress: (int count, int total) {
-                            pd.update(
-                              progress: count / total * 100,
-                              message: "正在下载《${song.name}》",
-                              isDismissible: false,
-                            );
-                          }).then((value) => value.printInfo());
-                        } catch (e) {
-                          pd.update(
-                            message: "下载《${song.name}》时发生错误：\n$e\n点击空白处关闭",
-                            progress: 0,
-                            isDismissible: true,
-                          );
-                          e.printInfo();
-                          return;
-                        }
-                      }
-                      pd.hide();
-                      //合并音频
-                      await Process.run("ffmpeg", [
-                        "-y",
-                        "-f",
-                        "concat",
-                        "-safe",
-                        "0",
-                        "-i",
-                        File("./download/list.txt").absolute.path,
-                        "-loglevel",
-                        "error",
-                        "-c",
-                        "copy",
-                        "./tmp.mp3"
-                      ]).then((value) {
-                        print(value.exitCode);
-                        print(value.stderr);
-                      });
-                      //询问是否平衡
-                      bool? result = await showDialog<bool>(
-                        context: nk.currentContext!,
-                        builder: (context) => ContentDialog(
-                          title: const Text(
-                            "平衡音量",
-                            style: TextStyle(
-                                fontSize: 30, fontWeight: FontWeight.normal),
-                          ),
-                          content: const Text(
-                            "FFmpeg对音量标准化的处理功能。\n即削峰填谷，使整个音频的音量变得平滑",
-                            style: TextStyle(fontWeight: FontWeight.w100),
-                          ),
-                          actions: [
-                            Button(
-                              child: const Text('算了吧'),
-                              onPressed: () => Navigator.pop(context, false),
-                            ),
-                            FilledButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              style:
-                                  ButtonStyle(elevation: ButtonState.all(12)),
-                              child: const Text("平衡"),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (result!) {
-                        //显示平衡进度条
-                        late BuildContext prc;
-                        showDialog(
-                            context: nk.currentContext!,
-                            builder: (context) {
-                              prc = context;
-                              return const ContentDialog(
-                                title: Text(
-                                  "正在平衡音量",
-                                  style: TextStyle(fontWeight: FontWeight.w100),
-                                ),
-                                content: ProgressRing(),
-                              );
-                            });
-                        Process.run("ffmpeg", [
-                          "-i",
-                          "./tmp.mp3",
-                          "-filter:a",
-                          "loudnorm",
-                          "-loglevel",
-                          "error",
-                          "-y",
-                          "./output.mp3",
-                        ]).then((value) {
-                          print(value.stderr);
-                          print(value.exitCode);
-                          Navigator.pop(prc);
-                          // File("./tmp.mp3").delete();
-                        });
-                      }
+                      generate(context);
                     },
                   ),
                   body: ReorderableListView(
@@ -301,5 +163,191 @@ class HomePageState extends State<HomePage> {
         ),
       ),
     );
+  }
+}
+
+void generate(BuildContext context) async {
+  bool ok = true;
+  if (Get.find<SongListController>().songs.isEmpty) {
+    return;
+  }
+  final ProgressDialog pd = ProgressDialog(context,
+      type: ProgressDialogType.Download, isDismissible: true);
+  pd.style(
+    progress: 0.0,
+    message: "正在连接...",
+    maxProgress: 100.0,
+    messageTextStyle: const TextStyle(fontFamily: "HYWenHei", fontSize: 18),
+  );
+  await pd.show();
+  File listFile = File("./download/list.txt");
+  if (listFile.existsSync()) {
+    listFile.delete();
+  }
+  for (var song in Get.find<SongListController>().songs) {
+    try {
+      // params += "${song.id}.mp3|";
+      await listFile.writeAsString("file '${song.id}.mp3'\n",
+          mode: FileMode.append);
+      if (File("./download/${song.id}.mp3").existsSync()) {
+        pd.update(progress: 100, message: "下载完成\n点击空白处关闭", isDismissible: true);
+        continue;
+      }
+      Dio dio = Dio();
+      // (dio.httpClientAdapter as DefaultHttpClientAdapter)
+      //     .onHttpClientCreate = (client) {
+      //   client.findProxy = (url) {
+      //     return "PROXY localhost:7891";
+      //   };
+      //   //Trust certificate for https proxy
+      //   client.badCertificateCallback = (cert, host, port) {
+      //     return true;
+      //   };
+      //   return client;
+      // };
+      await dio.downloadUri(Uri.parse(song.url), "./download/${song.id}.mp3",
+          onReceiveProgress: (int count, int total) {
+        pd.update(
+          progress: count / total * 100,
+          message: "正在下载《${song.name}》",
+          isDismissible: false,
+        );
+      }).then((value) => value.printInfo());
+    } catch (e) {
+      pd.update(
+        message: "下载《${song.name}》时发生错误：\n$e\n点击空白处关闭",
+        progress: 0,
+        isDismissible: true,
+      );
+      e.printInfo();
+      return;
+    }
+  }
+  pd.hide();
+  //合并音频
+  await Process.run("ffmpeg", [
+    "-y",
+    "-f",
+    "concat",
+    "-safe",
+    "0",
+    "-i",
+    File("./download/list.txt").absolute.path,
+    "-loglevel",
+    "error",
+    "-c",
+    "copy",
+    "./tmp.mp3"
+  ]).then((value) async {
+    if (value.exitCode != 0) {
+      print(value.exitCode);
+      print(value.stderr);
+      await showDialog(
+          context: nk.currentContext!,
+          builder: (context) => ContentDialog(
+                title: const Text(
+                  "出错啦！",
+                  style: TextStyle(fontWeight: FontWeight.w100),
+                ),
+                content: Text(value.stderr +
+                    (value.exitCode == 1 ? "\ntip: 请关闭tmp.mp3文件" : "")),
+              ),
+          barrierDismissible: true);
+      ok = false;
+    }
+  });
+  if (!ok) return;
+  //询问是否平衡
+  bool? result = await showDialog<bool>(
+    context: nk.currentContext!,
+    builder: (context) => ContentDialog(
+      title: const Text(
+        "平衡音量",
+        style: TextStyle(fontWeight: FontWeight.w100),
+      ),
+      content: const Text(
+        "FFmpeg对音量标准化的处理功能。\n即削峰填谷，使整个音频的音量变得平滑。\n*不建议使用。\n音频来自网易云音乐，理论上已平衡，使用本功能可能使失去响度变化。\n该功能耗时较长。",
+        style: TextStyle(fontWeight: FontWeight.w100),
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: ButtonStyle(elevation: ButtonState.all(12)),
+          child: const Text("平衡"),
+        ),
+        Button(
+          child: const Text('算了吧'),
+          onPressed: () => Navigator.pop(context, false),
+        ),
+      ],
+    ),
+  );
+  if (result!) {
+    //显示平衡进度条
+    late BuildContext prc;
+    showDialog(
+        context: nk.currentContext!,
+        builder: (context) {
+          prc = context;
+          return const ContentDialog(
+            title: Text(
+              "正在平衡音量",
+              style: TextStyle(fontWeight: FontWeight.w100),
+            ),
+            content: ProgressRing(),
+          );
+        });
+    await Process.run("ffmpeg", [
+      "-i",
+      "./tmp.mp3",
+      "-filter:a",
+      "loudnorm",
+      "-loglevel",
+      "error",
+      "-y",
+      "./output.mp3",
+    ]).then((value) async {
+      print(value.stderr);
+      print(value.exitCode);
+      if (value.exitCode != 0) {
+        await showDialog(
+            context: nk.currentContext!,
+            builder: (context) => ContentDialog(
+                  title: const Text(
+                    "出错啦！",
+                    style: TextStyle(fontWeight: FontWeight.w100),
+                  ),
+                  content: Text(value.stderr +
+                      (value.exitCode == 1 ? "\ntip: 请关闭tmp.mp3文件" : "")),
+                ),
+            barrierDismissible: true);
+        ok = false;
+      }
+      Navigator.pop(prc);
+      File("./tmp.mp3").delete();
+      if (!ok) return;
+    });
+  } else {
+    File("./tmp.mp3").rename("./output.mp3");
+  }
+  result = await showDialog<bool>(
+      context: nk.currentContext!,
+      builder: (context) => ContentDialog(
+            title: const Text(
+              "完成",
+              style: TextStyle(fontWeight: FontWeight.w100),
+            ),
+            content: const Text("看上去没有出错呢"),
+            actions: [
+              FilledButton(
+                  child: const Text("点我打开"),
+                  onPressed: () => Navigator.pop(context, true)),
+              Button(
+                  child: const Text("关闭"),
+                  onPressed: () => Navigator.pop(context, false))
+            ],
+          ));
+  if (result!) {
+    Process.run("explorer", ["/select,", File("output.mp3").absolute.path]);
   }
 }
