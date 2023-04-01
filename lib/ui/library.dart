@@ -1,21 +1,20 @@
 import 'dart:convert';
 
-import 'package:fluent_ui/fluent_ui.dart' as fluent;
-import 'package:aria/song.dart';
+import 'package:aria/type/song.dart';
 import 'package:flutter/material.dart';
 import 'package:ftoast/ftoast.dart';
-import 'package:get/get.dart';
 
-import 'netease.dart' as netease;
+import '../main.dart';
+import '../netease.dart' as netease;
 
-class MusicGetter extends StatefulWidget {
-  const MusicGetter({super.key});
+class MusicLibrary extends StatefulWidget {
+  const MusicLibrary({super.key});
 
   @override
-  State<MusicGetter> createState() => _MusicGetterState();
+  State<MusicLibrary> createState() => _MusicLibraryState();
 }
 
-class _MusicGetterState extends State<MusicGetter> {
+class _MusicLibraryState extends State<MusicLibrary> {
   int _nowIndex = 1;
   String _nowValue = "";
   List<Song> songs = <Song>[];
@@ -34,8 +33,15 @@ class _MusicGetterState extends State<MusicGetter> {
               Map<String, dynamic> map = json.decode(value.body);
               List songList = map["result"]["songs"];
               for (int i = 0; i < songList.length; i++) {
+                if (songList[i]["copyright"] == 1) {
+                  continue;
+                }
+                String authors = "";
+                for (var author in songList[i]["ar"]) {
+                  authors += author["name"] + ", ";
+                }
                 songs.add(Song(songList[i]["name"], songList[i]["id"] as int,
-                    songList[i]["ar"][0]["name"]));
+                    authors.substring(0, authors.length - 2)));
               }
               setState(() {});
             });
@@ -50,35 +56,23 @@ class _MusicGetterState extends State<MusicGetter> {
                   itemBuilder: (BuildContext context, int index) {
                     return GestureDetector(
                         onTap: () {
-                          print(songs[index].id);
-                          netease.getSongInfo(songs[index].id).then((value) {
-                            Map<String, dynamic> map = json.decode(value.body);
-                            if (map["data"][0]["url"] == null) {
-                              FToast.toast(context,
-                                  msg: "该歌曲是VIP单曲！暂不支持",
-                                  msgStyle:
-                                      const TextStyle(fontFamily: "HYWenHei"),
-                                  color: Colors.grey.shade400, duration: 800);
-                              return;
-                            }
-                            songs[index].url = map["data"][0]["url"];
-                            if (!Get.find<SongListController>().add(songs[index])) {
-                              FToast.toast(context,
-                                  msg: "《${songs[index].name}》已经在播放列表中",
-                                  msgStyle:
-                                  const TextStyle(fontFamily: "HYWenHei"),
-                                  color: Colors.grey.shade400,
-                                  duration: 500);
-                              return;
-                            }
+                          if (!projects[nowProject]
+                              .songs
+                              .contains(songs[index])) {
+                            projects[nowProject].songs.add(songs[index]);
                             FToast.toast(context,
-                                msg: "已加入《${songs[index].name}》",
+                                msg: "《${songs[index].name}》已经在播放列表中",
                                 msgStyle:
-                                const TextStyle(fontFamily: "HYWenHei"),
+                                    const TextStyle(fontFamily: "HYWenHei"),
                                 color: Colors.grey.shade400,
                                 duration: 500);
-                            print(map["data"][0]["url"]);
-                          });
+                            return;
+                          }
+                          FToast.toast(context,
+                              msg: "已加入《${songs[index].name}》",
+                              msgStyle: const TextStyle(fontFamily: "HYWenHei"),
+                              color: Colors.grey.shade400,
+                              duration: 500);
                         },
                         child: Container(
                             width: double.infinity,
@@ -240,14 +234,14 @@ class SearchBarWidgetState extends State<SearchBarWidget> {
     _controller.dispose();
   }
 }
-
-class SongListController extends GetxController {
-  final List<Song> songs = [];
-  bool add(Song song) {
-    if (songs.contains(song)) {
-      return false;
-    }
-    songs.add(song);
-    return true;
-  }
-}
+//
+// class SongListController extends GetxController {
+//   final List<Song> songs = [];
+//   bool add(Song song) {
+//     if (songs.contains(song)) {
+//       return false;
+//     }
+//     songs.add(song);
+//     return true;
+//   }
+// }

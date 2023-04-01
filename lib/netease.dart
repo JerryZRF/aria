@@ -80,7 +80,7 @@ Future<Response> _getSongInfo(String params, String encSecKey) {
   return http.post(Uri.parse(url),
       headers: headers, body: {"params": params, "encSecKey": encSecKey});
 }
-
+//TODO 包装SongInfo
 Future<Response> getSongInfo(int id) async {
   var d = {
     "ids": "[${id}]",
@@ -110,7 +110,7 @@ Future<Response> searchSongs(String name) {
   var dd = json.encoder.convert(d);
   dd = format(dd);
   var param = _getFinalParam(dd, _randStr);
-  print(param["params"]);
-  print(param["encSecKey"]);
+  // print(param["params"]);
+  // print(param["encSecKey"]);
   return _getMusicList(param["params"], param["encSecKey"]);
 }

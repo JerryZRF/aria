@@ -44,8 +44,7 @@ dependencies:
   get: ^4.6.5
   ftoast: ^2.0.0
   flutter_acrylic: ^1.1.1
-  dio: ^4.0.6
-  flutter_ffmpeg: ^0.4.2
+  dio: ^5.1.1
 
 dev_dependencies:
   flutter_test:

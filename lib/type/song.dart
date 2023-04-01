@@ -5,6 +5,16 @@ class Song {
   late String url;
 
   Song(this.name, this.id, this.author);
+
+
+  Map toJson() {
+    Map map = {};
+    map["name"] = name;
+    map["author"] = author;
+    map["id"] = id;
+    return map;
+  }
+
   @override
   bool operator ==(other) {
     if (other is! Song) {
