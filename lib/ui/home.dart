@@ -37,11 +37,11 @@ class HomePageState extends State<HomePage> {
     windowManager.show();
     return NavigationView(
       appBar: NavigationAppBar(
-        title: const DragToMoveArea(
+        title: DragToMoveArea(
             child: Align(
           alignment: AlignmentDirectional.centerStart,
           child: Text(
-            "Aria",
+            "Aria  -  ${projects[nowProject].name}",
             style: TextStyle(fontSize: 18),
           ),
         )),
