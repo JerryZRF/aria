@@ -45,6 +45,8 @@ dependencies:
   ftoast: ^2.0.0
   flutter_acrylic: ^1.1.1
   dio: ^5.1.1
+  file_selector: ^0.9.2+4
+  crypto: ^3.0.2
 
 dev_dependencies:
   flutter_test:

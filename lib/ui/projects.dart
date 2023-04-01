@@ -58,7 +58,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
       ),
       body: ListView(
         children: projects
-            .map((e) => GestureDetector(
+            .map((p) => GestureDetector(
                   child: Container(
                     height: 40,
                     width: double.infinity,
@@ -66,7 +66,9 @@ class _ProjectsPageState extends State<ProjectsPage> {
                     decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10.0),
                         color: Colors.grey[30]),
-                    child: ListTile(title: Text(e.name)),
+                    child: ListTile(
+                        title: Text(
+                            "${p.name}  -  ${DateTime.fromMillisecondsSinceEpoch(p.date).toLocal().toString().split(".")[0]}")),
                   ),
                   onDoubleTap: () async {
                     await windowManager.hide();
@@ -74,11 +76,33 @@ class _ProjectsPageState extends State<ProjectsPage> {
                     await windowManager.setSize(const Size(1280, 768));
                     await windowManager.center();
 
-                    nowProject = projects.indexOf(e);
+                    nowProject = projects.indexOf(p);
                     Navigator.of(context).pushAndRemoveUntil(
                         PageRouteBuilder(
                             pageBuilder: (context, i, g) => const HomePage()),
                         (route) => false);
+                  },
+                  onSecondaryTap: () async {
+                    bool? result = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => ContentDialog(
+                              title: Text("删除项目"),
+                              content: Text("确定要删除吗？\n数据无价，三思而后行"),
+                              actions: [
+                                FilledButton(
+                                    child: Text("狠心删除"),
+                                    onPressed: () =>
+                                        Navigator.pop(context, true)),
+                                Button(
+                                    child: Text("算了吧"),
+                                    onPressed: () =>
+                                        Navigator.pop(context, false))
+                              ],
+                            ));
+                    if (result!) {
+                      projects.remove(p);
+                      setState(() {});
+                    }
                   },
                 ))
             .toList(),
@@ -104,20 +128,22 @@ class _ProjectsPageState extends State<ProjectsPage> {
           if (name == null || name == "") {
             return;
           }
-          Project existedProject = projects.firstWhere((p) => p.name == name, orElse: () => Project("", 0, []));
+          Project existedProject = projects.firstWhere((p) => p.name == name,
+              orElse: () => Project("", 0, []));
           if (existedProject != Project("", 0, [])) {
             showDialog(
                 context: context,
                 builder: (context) => ContentDialog(
                       title: const Text("出错了！"),
-                      content: Text("这里似乎已经有一个叫做\"$name\"的项目了呢，它在${DateTime.fromMillisecondsSinceEpoch(existedProject.date)}被创建"),
+                      content: Text(
+                          "这里似乎已经有一个叫做\"$name\"的项目了呢，它在${DateTime.fromMillisecondsSinceEpoch(existedProject.date)}被创建"),
                     ),
                 barrierDismissible: true);
             return;
           }
           setState(() {
-            projects.add(Project(
-                name, (DateTime.now().millisecondsSinceEpoch), []));
+            projects.add(
+                Project(name, (DateTime.now().millisecondsSinceEpoch), []));
             save();
           });
         },

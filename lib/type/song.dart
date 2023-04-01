@@ -2,28 +2,20 @@ class Song {
   final String name;
   final int id;
   final String author;
-  late String url;
+  String? url;
 
-  Song(this.name, this.id, this.author);
+  Song(this.name, this.id, this.author, {this.url});
 
 
   Map toJson() {
+    print(url);
     Map map = {};
     map["name"] = name;
     map["author"] = author;
     map["id"] = id;
+    if (url != null && !url!.startsWith("http")) {
+      map["url"] = url;
+    }
     return map;
   }
-
-  @override
-  bool operator ==(other) {
-    if (other is! Song) {
-      return false;
-    }
-    final Song song = other;
-    return id == song.id;
-  }
-
-  @override
-  int get hashCode => id;
 }

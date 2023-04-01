@@ -3,8 +3,10 @@ import 'dart:io';
 
 import 'package:aria/ui/library.dart';
 import 'package:aria/ui/projects.dart';
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:get/get.dart';
@@ -80,11 +82,84 @@ class HomePageState extends State<HomePage> {
               title: const Text("已选歌曲"),
               body: material.Scaffold(
                 backgroundColor: Colors.grey[110],
-                floatingActionButton: material.FloatingActionButton(
-                  child: const Icon(material.Icons.gavel_rounded),
-                  onPressed: () async {
-                    generate(context);
-                  },
+                floatingActionButton: Stack(
+                  children: <Widget>[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 70),
+                      child: Align(
+                        alignment: Alignment.bottomRight,
+                        child: material.FloatingActionButton(
+                          heroTag: "btn1",
+                          onPressed: () => generate(context),
+                          child: const Icon(material.Icons.gavel_rounded),
+                        ),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.bottomRight,
+                      child: material.FloatingActionButton(
+                        heroTag: "btn2",
+                        onPressed: () async {
+                          const XTypeGroup musicGroup = XTypeGroup(
+                            label: "音频文件",
+                            extensions: <String>["mp3", "wma", "wav", "aac"],
+                          );
+                          final List<XFile> files = await openFiles(
+                              acceptedTypeGroups: [musicGroup, XTypeGroup()]);
+                          if (files.isEmpty) {
+                            return;
+                          }
+                          bool? result = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => ContentDialog(
+                              title: Text("导入本地文件"),
+                              content:
+                                  Text("是否复制一份文件？\n可以防止源文件丢失或环境迁移，但会多占用一份空间"),
+                              actions: [
+                                Button(
+                                    child: Text("否"),
+                                    onPressed: () =>
+                                        Navigator.pop(context, false)),
+                                FilledButton(
+                                    child: Text("是"),
+                                    onPressed: () =>
+                                        Navigator.pop(context, true))
+                              ],
+                            ),
+                          );
+                          if (result!) {
+                            for (XFile f in files) {
+                              File file = File(f.path);
+                              String md = md5
+                                  .convert(file.readAsBytesSync())
+                                  .toString();
+                              if (!File(
+                                      "${cacheDir.path}/${md}.${f.name.split(".").last}")
+                                  .existsSync()) {
+                                await file.copy(
+                                    "${cacheDir.path}/${md}.${f.name.split(".").last}");
+                              }
+                              projects[nowProject]
+                                  .songs
+                                  .add(Song(f.name, 0, "Unknown", url: "${md}.${f.name.split(".").last}"));
+                              // save();
+                            }
+                            setState(() {});
+                          } else {
+                            for (XFile f in files) {
+                              projects[nowProject]
+                                  .songs
+                                  .add(Song(f.name, 0, "Unknown", url: f.path));
+                              print(f.path);
+                            }
+                            setState(() {});
+                          }
+                        },
+                        child: const Icon(
+                            material.Icons.insert_drive_file_outlined),
+                      ),
+                    ),
+                  ],
                 ),
                 body: ReorderableListView(
                   header: Container(
@@ -167,44 +242,51 @@ void generate(BuildContext context) async {
       type: ProgressDialogType.Download, isDismissible: true);
   pd.style(
     progress: 0.0,
-    message: "正在连接...",
+    message: "正在加载...",
     maxProgress: 100.0,
     messageTextStyle: const TextStyle(fontFamily: "HYWenHei", fontSize: 18),
   );
   await pd.show();
-  for (Song song in projects[nowProject].songs) {
-    await netease.getSongInfo(song.id).then((value) {
-      Map<String, dynamic> map = json.decode(value.body);
-      song.url = map["data"][0]["url"];
-    });
-  }
   File listFile = File("${cacheDir.path}/list.txt");
   if (listFile.existsSync()) {
-    listFile.delete();
+    await listFile.delete();
+  }
+  for (Song song in projects[nowProject].songs) {
+    await listFile.writeAsString(
+        "file '${song.url == null || song.url!.startsWith("http") ? "${song.id}.mp3" : song.url} '\n",
+        mode: FileMode.append);
+    if (song.url == null || song.url!.startsWith("http")) {
+      await netease.getSongInfo(song.id).then((value) {
+        Map<String, dynamic> map = json.decode(value.body);
+        song.url = map["data"][0]["url"];
+      });
+    }
+  }
+  Dio dio = Dio();
+  if (proxy != null) {
+    dio.httpClientAdapter = IOHttpClientAdapter(
+      onHttpClientCreate: (client) {
+        client.findProxy = (uri) {
+          return 'PROXY $proxy';
+        };
+        return client;
+      },
+    );
   }
   for (var song in projects[nowProject].songs) {
+    print(song.toJson());
+    if (!song.url!.startsWith("http")) {
+      continue;
+    }
     try {
-      // params += "${song.id}.mp3|";
-      await listFile.writeAsString("file '${song.id}.mp3'\n",
-          mode: FileMode.append);
       if (File("${cacheDir.path}/${song.id}.mp3").existsSync()) {
         pd.update(progress: 100, message: "下载完成", isDismissible: true);
         continue;
       }
-      Dio dio = Dio();
-      if (proxy != null) {
-        dio.httpClientAdapter = IOHttpClientAdapter(
-          onHttpClientCreate: (client) {
-            client.findProxy = (uri) {
-              return 'PROXY $proxy';
-            };
-            return client;
-          },
-        );
-      }
       print("${cacheDir.path}/${song.id}.mp3");
-      await dio.downloadUri(Uri.parse(song.url), "${cacheDir.path}/${song.id}.mp3",
-          onReceiveProgress: (int count, int total) {
+      await dio
+          .downloadUri(Uri.parse(song.url!), "${cacheDir.path}/${song.id}.mp3",
+              onReceiveProgress: (int count, int total) {
         pd.update(
           progress: count / total * 100,
           message: "正在下载《${song.name}》",
@@ -218,6 +300,7 @@ void generate(BuildContext context) async {
         isDismissible: true,
       );
       e.printInfo();
+      e.printError();
       return;
     }
   }
@@ -230,7 +313,6 @@ void generate(BuildContext context) async {
         return const ContentDialog(
           title: Text(
             "正在合并音频",
-            style: TextStyle(fontWeight: FontWeight.w100),
           ),
           content: ProgressRing(),
         );
@@ -258,7 +340,6 @@ void generate(BuildContext context) async {
           builder: (context) => ContentDialog(
                 title: const Text(
                   "出错啦！",
-                  style: TextStyle(fontWeight: FontWeight.w100),
                 ),
                 content: Text(value.stderr +
                     (value.exitCode == 1 ? "\ntip: 请关闭tmp.mp3文件" : "")),
@@ -275,11 +356,9 @@ void generate(BuildContext context) async {
     builder: (context) => ContentDialog(
       title: const Text(
         "平衡音量",
-        style: TextStyle(fontWeight: FontWeight.w100),
       ),
       content: const Text(
         "FFmpeg对音量标准化的处理功能。\n即削峰填谷，使整个音频的音量变得平滑。\n*不建议使用。\n音频来自网易云音乐，理论上已平衡，使用本功能可能使失去响度变化。\n该功能耗时较长。",
-        style: TextStyle(fontWeight: FontWeight.w100),
       ),
       actions: [
         FilledButton(
@@ -303,7 +382,6 @@ void generate(BuildContext context) async {
           return const ContentDialog(
             title: Text(
               "正在平衡音量",
-              style: TextStyle(fontWeight: FontWeight.w100),
             ),
             content: ProgressRing(),
           );
@@ -326,7 +404,6 @@ void generate(BuildContext context) async {
             builder: (context) => ContentDialog(
                   title: const Text(
                     "出错啦！",
-                    style: TextStyle(fontWeight: FontWeight.w100),
                   ),
                   content: Text(value.stderr +
                       (value.exitCode == 1 ? "\ntip: 请关闭tmp.mp3文件" : "")),
@@ -346,7 +423,6 @@ void generate(BuildContext context) async {
       builder: (context) => ContentDialog(
             title: const Text(
               "完成",
-              style: TextStyle(fontWeight: FontWeight.w100),
             ),
             content: const Text("看上去没有出错呢"),
             actions: [

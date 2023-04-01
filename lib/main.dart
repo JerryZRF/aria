@@ -43,13 +43,18 @@ void main() async {
     List<Song> songs = [];
     for (var song in (project["songs"] as List)) {
       songs.add(Song(song["name"], song["id"], song["author"]));
+      songs.last.url = song["url"];
     }
     projects.add(Project(project["name"], project["date"], songs));
   });
+
   runApp(FluentApp(
     navigatorKey: nk,
-    home: ProjectsPage(),
+    home: const ProjectsPage(),
     theme: FluentThemeData(
-        fontFamily: "HYWenHei", scaffoldBackgroundColor: Colors.grey[100]),
+        dialogTheme: const ContentDialogThemeData(
+            titleStyle: TextStyle(fontWeight: FontWeight.w100, color: Colors.black, fontSize: 34, fontFamily: "HYWenHei",)),
+        fontFamily: "HYWenHei",
+        scaffoldBackgroundColor: Colors.grey[100]),
   ));
 }

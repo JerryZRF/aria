@@ -33,7 +33,8 @@ class _MusicLibraryState extends State<MusicLibrary> {
               Map<String, dynamic> map = json.decode(value.body);
               List songList = map["result"]["songs"];
               for (int i = 0; i < songList.length; i++) {
-                if (songList[i]["copyright"] == 1) {
+                print(songList[i]);
+                if (songList[i]["privilege"]["sp"] != 7) {
                   continue;
                 }
                 String authors = "";
@@ -56,18 +57,18 @@ class _MusicLibraryState extends State<MusicLibrary> {
                   itemBuilder: (BuildContext context, int index) {
                     return GestureDetector(
                         onTap: () {
-                          if (!projects[nowProject]
-                              .songs
-                              .contains(songs[index])) {
-                            projects[nowProject].songs.add(songs[index]);
-                            FToast.toast(context,
-                                msg: "《${songs[index].name}》已经在播放列表中",
-                                msgStyle:
-                                    const TextStyle(fontFamily: "HYWenHei"),
-                                color: Colors.grey.shade400,
-                                duration: 500);
-                            return;
-                          }
+                          // if (projects[nowProject]
+                          //     .songs
+                          //     .contains(songs[index])) {
+                          //   FToast.toast(context,
+                          //       msg: "《${songs[index].name}》已经在播放列表中",
+                          //       msgStyle:
+                          //           const TextStyle(fontFamily: "HYWenHei"),
+                          //       color: Colors.grey.shade400,
+                          //       duration: 500);
+                          //   return;
+                          // }
+                          projects[nowProject].songs.add(songs[index]);
                           FToast.toast(context,
                               msg: "已加入《${songs[index].name}》",
                               msgStyle: const TextStyle(fontFamily: "HYWenHei"),
