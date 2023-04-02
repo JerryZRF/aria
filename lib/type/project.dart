@@ -2,8 +2,8 @@
 import 'package:aria/type/song.dart';
 
 class Project {
-  final String name;
-  final int date;
+  String name;
+  int date;
   List<Song> songs;
 
   Project(this.name, this.date, this.songs);

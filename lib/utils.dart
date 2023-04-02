@@ -30,6 +30,7 @@ Future saveDialog(BuildContext context) async{
 }
 
 Future save() async {
+  projects[nowProject].date = DateTime.now().millisecondsSinceEpoch;
   File file = File("./config.json");
   await file.writeAsString(jsonEncode({"projects": projects}));
 }

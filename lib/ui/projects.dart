@@ -82,6 +82,15 @@ class _ProjectsPageState extends State<ProjectsPage> {
                             pageBuilder: (context, i, g) => const HomePage()),
                         (route) => false);
                   },
+                  onSecondaryLongPress: () {
+                    getName(context).then((name) {
+                      if (name == null) {
+                        return;
+                      }
+                      p.name = name;
+                      setState(() {});
+                    });
+                  },
                   onSecondaryTap: () async {
                     bool? result = await showDialog<bool>(
                         context: context,
@@ -99,6 +108,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
                                         Navigator.pop(context, false))
                               ],
                             ));
+
                     if (result!) {
                       projects.remove(p);
                       setState(() {});
@@ -108,46 +118,53 @@ class _ProjectsPageState extends State<ProjectsPage> {
             .toList(),
       ),
       floatingActionButton: material.FloatingActionButton(
-        child: const Icon(FluentIcons.new_team_project),
-        onPressed: () async {
-          String? name = await showDialog<String>(
-              context: context,
-              builder: (context) => ContentDialog(
-                    title: const Text("新建项目"),
-                    content: InfoLabel(
-                      label: '请输入项目名:',
-                      child: TextBox(
-                          placeholder: '项目名',
-                          expands: false,
-                          onSubmitted: (name) {
-                            Navigator.pop(context, name);
-                          }),
-                    ),
-                  ),
-              barrierDismissible: true);
-          if (name == null || name == "") {
-            return;
-          }
-          Project existedProject = projects.firstWhere((p) => p.name == name,
-              orElse: () => Project("", 0, []));
-          if (existedProject != Project("", 0, [])) {
-            showDialog(
-                context: context,
-                builder: (context) => ContentDialog(
-                      title: const Text("出错了！"),
-                      content: Text(
-                          "这里似乎已经有一个叫做\"$name\"的项目了呢，它在${DateTime.fromMillisecondsSinceEpoch(existedProject.date)}被创建"),
-                    ),
-                barrierDismissible: true);
-            return;
-          }
-          setState(() {
-            projects.add(
-                Project(name, (DateTime.now().millisecondsSinceEpoch), []));
-            save();
-          });
-        },
-      ),
+          child: const Icon(FluentIcons.new_team_project),
+          onPressed: () async {
+            getName(context).then((name) {
+              if (name == null) {
+                return;
+              }
+              projects.add(
+                  Project(name, (DateTime.now().millisecondsSinceEpoch), []));
+              save();
+              setState(() {});
+            });
+          }),
     );
   }
+}
+
+Future<String?> getName(BuildContext context) async {
+  String? name = await showDialog<String>(
+      context: context,
+      builder: (context) => ContentDialog(
+            title: const Text("项目命名"),
+            content: InfoLabel(
+              label: '请输入项目名:',
+              child: TextBox(
+                  placeholder: '项目名',
+                  expands: false,
+                  onSubmitted: (name) {
+                    Navigator.pop(context, name);
+                  }),
+            ),
+          ),
+      barrierDismissible: true);
+  if (name == null || name == "") {
+    return null;
+  }
+  Project existedProject = projects.firstWhere((p) => p.name == name,
+      orElse: () => Project("", 0, []));
+  if (existedProject != Project("", 0, [])) {
+    showDialog(
+        context: context,
+        builder: (context) => ContentDialog(
+              title: const Text("出错了！"),
+              content: Text(
+                  "这里似乎已经有一个叫做\"$name\"的项目了呢，它上次被修改是在${DateTime.fromMillisecondsSinceEpoch(existedProject.date)}"),
+            ),
+        barrierDismissible: true);
+    return null;
+  }
+  return name;
 }
