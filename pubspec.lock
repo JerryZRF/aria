@@ -413,14 +413,6 @@ packages:
       url: "https://mirrors.tuna.tsinghua.edu.cn/dart-pub/"
     source: hosted
     version: "4.2.4"
-  progress_dialog:
-    dependency: "direct main"
-    description:
-      name: progress_dialog
-      sha256: "2f92c7664ef569939c8c2c38bdf770e2d791d4e9075efe38d7fff0940afbcadd"
-      url: "https://mirrors.tuna.tsinghua.edu.cn/dart-pub/"
-    source: hosted
-    version: "1.2.4"
   recase:
     dependency: transitive
     description:

@@ -20,7 +20,7 @@ Future saveDialog(BuildContext context) async{
               child: const Text("保存"),
               onPressed: () => Navigator.pop(context, true)),
           Button(
-              child: const Text("算了吧"),
+              child: const Text("不保存"),
               onPressed: () => Navigator.pop(context, false))
         ],
       ));

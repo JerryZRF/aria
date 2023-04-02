@@ -10,7 +10,6 @@ import 'package:file_selector/file_selector.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:get/get.dart';
-import 'package:progress_dialog/progress_dialog.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../netease.dart' as netease;
@@ -42,7 +41,7 @@ class HomePageState extends State<HomePage> {
           alignment: AlignmentDirectional.centerStart,
           child: Text(
             "Aria  -  ${projects[nowProject].name}",
-            style: TextStyle(fontSize: 18),
+            style: const TextStyle(fontSize: 18),
           ),
         )),
         height: 50,
@@ -105,23 +104,26 @@ class HomePageState extends State<HomePage> {
                             extensions: <String>["mp3", "wma", "wav", "aac"],
                           );
                           final List<XFile> files = await openFiles(
-                              acceptedTypeGroups: [musicGroup, XTypeGroup()]);
+                              acceptedTypeGroups: [
+                                musicGroup,
+                                const XTypeGroup()
+                              ]);
                           if (files.isEmpty) {
                             return;
                           }
                           bool? result = await showDialog<bool>(
                             context: context,
                             builder: (context) => ContentDialog(
-                              title: Text("导入本地文件"),
-                              content:
-                                  Text("是否复制一份文件？\n可以防止源文件丢失或环境迁移，但会多占用一份空间"),
+                              title: const Text("导入本地文件"),
+                              content: const Text(
+                                  "是否复制一份文件？\n可以防止源文件丢失或环境迁移，但会多占用一份空间"),
                               actions: [
                                 Button(
-                                    child: Text("否"),
+                                    child: const Text("否"),
                                     onPressed: () =>
                                         Navigator.pop(context, false)),
                                 FilledButton(
-                                    child: Text("是"),
+                                    child: const Text("是"),
                                     onPressed: () =>
                                         Navigator.pop(context, true))
                               ],
@@ -134,14 +136,14 @@ class HomePageState extends State<HomePage> {
                                   .convert(file.readAsBytesSync())
                                   .toString();
                               if (!File(
-                                      "${cacheDir.path}/${md}.${f.name.split(".").last}")
+                                      "${cacheDir.path}/$md.${f.name.split(".").last}")
                                   .existsSync()) {
                                 await file.copy(
-                                    "${cacheDir.path}/${md}.${f.name.split(".").last}");
+                                    "${cacheDir.path}/$md.${f.name.split(".").last}");
                               }
-                              projects[nowProject]
-                                  .songs
-                                  .add(Song(f.name, 0, "Unknown", url: "${md}.${f.name.split(".").last}"));
+                              projects[nowProject].songs.add(Song(
+                                  f.name, 0, "Unknown",
+                                  url: "$md.${f.name.split(".").last}"));
                               // save();
                             }
                             setState(() {});
@@ -232,34 +234,46 @@ class HomePageState extends State<HomePage> {
   }
 }
 
-void generate(BuildContext context) async {
+void generate(BuildContext homeContext) async {
   bool ok = true;
   if (projects[nowProject].songs.isEmpty) {
     return;
   }
   cacheDir.createSync();
-  final ProgressDialog pd = ProgressDialog(context,
-      type: ProgressDialogType.Download, isDismissible: true);
-  pd.style(
-    progress: 0.0,
-    message: "正在加载...",
-    maxProgress: 100.0,
-    messageTextStyle: const TextStyle(fontFamily: "HYWenHei", fontSize: 18),
-  );
-  await pd.show();
+  late BuildContext dialogContext;
+  showDialog(
+      context: homeContext,
+      builder: (context) {
+        dialogContext = context;
+        return ContentDialog(
+          title: const Text("合成中！"),
+          content: Row(
+            children: const <Widget>[
+              Text("正在准备资源，很快就好啦"),
+              Expanded(child: SizedBox()),
+              ProgressRing(),
+            ],
+          ),
+        );
+      });
   File listFile = File("${cacheDir.path}/list.txt");
   if (listFile.existsSync()) {
     await listFile.delete();
   }
+  //写入list.txt
   for (Song song in projects[nowProject].songs) {
-    await listFile.writeAsString(
-        "file '${song.url == null || song.url!.startsWith("http") ? "${song.id}.mp3" : song.url} '\n",
-        mode: FileMode.append);
     if (song.url == null || song.url!.startsWith("http")) {
+      //在线歌曲
+      await listFile.writeAsString("file '${song.id}.mp3'\n",
+          mode: FileMode.append);
       await netease.getSongInfo(song.id).then((value) {
         Map<String, dynamic> map = json.decode(value.body);
         song.url = map["data"][0]["url"];
       });
+    } else {
+      //本地歌曲
+      await listFile.writeAsString("file '${song.url}'\n",
+          mode: FileMode.append);
     }
   }
   Dio dio = Dio();
@@ -273,43 +287,68 @@ void generate(BuildContext context) async {
       },
     );
   }
+  Navigator.pop(dialogContext);
   for (var song in projects[nowProject].songs) {
-    print(song.toJson());
+    // print(song.toJson());
     if (!song.url!.startsWith("http")) {
       continue;
     }
     try {
       if (File("${cacheDir.path}/${song.id}.mp3").existsSync()) {
-        pd.update(progress: 100, message: "下载完成", isDismissible: true);
         continue;
       }
-      print("${cacheDir.path}/${song.id}.mp3");
+      // print("${cacheDir.path}/${song.id}.mp3");
+      ValueNotifier<double> progress = ValueNotifier(0);
+      showDialog(
+          context: homeContext,
+          builder: (context) {
+            dialogContext = context;
+            return ContentDialog(
+              title: Text("合成中"),
+              content: Text("正在下载《${song.name}》"),
+              actions: [
+                ValueListenableBuilder<double>(
+                  builder: (c, v, w) {
+                    return ProgressBar(
+                      value: progress.value,
+                    );
+                  },
+                  valueListenable: progress,
+                )
+              ],
+            );
+          });
       await dio
           .downloadUri(Uri.parse(song.url!), "${cacheDir.path}/${song.id}.mp3",
               onReceiveProgress: (int count, int total) {
-        pd.update(
-          progress: count / total * 100,
-          message: "正在下载《${song.name}》",
-          isDismissible: false,
-        );
-      }).then((value) => value.printInfo());
+        progress.value = count / total * 100;
+      });
+      Navigator.pop(dialogContext);
     } catch (e) {
-      pd.update(
-        message: "下载《${song.name}》时发生错误：\n$e\n点击空白处关闭",
-        progress: 0,
-        isDismissible: true,
-      );
+      Navigator.maybePop(dialogContext);
+      showDialog(
+          context: homeContext,
+          builder: (context) {
+            return ContentDialog(
+              title: Text("出错啦！"),
+              content: Text("下载《${song.name}》时出现错误：\n$e\n点击空白处关闭"),
+            );
+          },
+          barrierDismissible: true);
+      // pd.update(
+      //   message: "下载《${song.name}》时发生错误：\n$e\n点击空白处关闭",
+      //   progress: 0,
+      //   isDismissible: true,
+      // );
       e.printInfo();
       e.printError();
       return;
     }
   }
-  pd.hide();
-  late BuildContext dialog;
   showDialog(
-      context: context,
+      context: homeContext,
       builder: (context) {
-        dialog = context;
+        dialogContext = context;
         return const ContentDialog(
           title: Text(
             "正在合并音频",
@@ -325,7 +364,7 @@ void generate(BuildContext context) async {
     "-safe",
     "0",
     "-i",
-    File("${cacheDir.path}/list.txt").absolute.path,
+    File("${cacheDir.path}/list.txt").path,
     "-loglevel",
     "error",
     "-c",
@@ -335,8 +374,9 @@ void generate(BuildContext context) async {
     if (value.exitCode != 0) {
       print(value.exitCode);
       print(value.stderr);
+      Navigator.pop(dialogContext);
       await showDialog(
-          context: context,
+          context: homeContext,
           builder: (context) => ContentDialog(
                 title: const Text(
                   "出错啦！",
@@ -348,11 +388,11 @@ void generate(BuildContext context) async {
       ok = false;
     }
   });
-  Navigator.pop(dialog);
   if (!ok) return;
+  Navigator.pop(dialogContext);
   //询问是否平衡
   bool? result = await showDialog<bool>(
-    context: context,
+    context: homeContext,
     builder: (context) => ContentDialog(
       title: const Text(
         "平衡音量",
@@ -376,9 +416,9 @@ void generate(BuildContext context) async {
   if (result!) {
     //显示平衡进度条
     showDialog(
-        context: context,
+        context: homeContext,
         builder: (context) {
-          dialog = context;
+          dialogContext = context;
           return const ContentDialog(
             title: Text(
               "正在平衡音量",
@@ -399,8 +439,9 @@ void generate(BuildContext context) async {
       print(value.stderr);
       print(value.exitCode);
       if (value.exitCode != 0) {
+        Navigator.pop(dialogContext);
         await showDialog(
-            context: context,
+            context: homeContext,
             builder: (context) => ContentDialog(
                   title: const Text(
                     "出错啦！",
@@ -409,17 +450,29 @@ void generate(BuildContext context) async {
                       (value.exitCode == 1 ? "\ntip: 请关闭tmp.mp3文件" : "")),
                 ),
             barrierDismissible: true);
-        ok = false;
+        return;
       }
-      Navigator.pop(dialog);
-      File("./tmp.mp3").delete();
-      if (!ok) return;
     });
   } else {
-    File("./tmp.mp3").rename("./${projects[nowProject].name}.mp3");
+    try {
+      await File("./tmp.mp3").rename("./${projects[nowProject].name}.mp3");
+    } catch (e) {
+      // Navigator.pop(dialogContext);
+      // e.printError();
+      await showDialog(
+          context: homeContext,
+          builder: (context) => ContentDialog(
+            title: const Text(
+              "出错啦！",
+            ),
+            content: Text("$e\ntip: 请关闭${projects[nowProject].name}.mp3文件"),
+          ),
+          barrierDismissible: true);
+      return;
+    }
   }
   result = await showDialog<bool>(
-      context: context,
+      context: homeContext,
       builder: (context) => ContentDialog(
             title: const Text(
               "完成",
