@@ -36,18 +36,19 @@ void main() async {
     await windowManager.setPreventClose(true);
     await windowManager.setSkipTaskbar(false);
   });
-  Map<String, dynamic> config =
-      jsonDecode(File("./config.json").readAsStringSync());
-  projects.clear();
-  (config["projects"] as List).cast().forEach((project) {
-    List<Song> songs = [];
-    for (var song in (project["songs"] as List)) {
-      songs.add(Song(song["name"], song["id"], song["author"]));
-      songs.last.url = song["url"];
-    }
-    projects.add(Project(project["name"], project["date"], songs));
-  });
-
+  if (File("./config.json").existsSync()) {
+    Map<String, dynamic> config =
+    jsonDecode(File("./config.json").readAsStringSync());
+    projects.clear();
+    (config["projects"] as List).cast().forEach((project) {
+      List<Song> songs = [];
+      for (var song in (project["songs"] as List)) {
+        songs.add(Song(song["name"], song["id"], song["author"]));
+        songs.last.url = song["url"];
+      }
+      projects.add(Project(project["name"], project["date"], songs));
+    });
+  }
   runApp(FluentApp(
     navigatorKey: nk,
     home: const ProjectsPage(),
