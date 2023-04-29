@@ -81,7 +81,7 @@ class SongListState extends State<SongList> {
                     }
                     projects[nowProject].songs.add(Song(
                         f.name, 0, "Unknown", null,
-                        url: "$md.${f.name.split(".").last}"));
+                        url: "${cacheDir.path}/$md.${f.name.split(".").last}"));
                     // save();
                   }
                   setState(() {});
