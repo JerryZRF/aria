@@ -8,6 +8,7 @@ import 'package:window_manager/window_manager.dart';
 import '../main.dart';
 import '../type/project.dart';
 import '../utils.dart';
+import 'colors.dart';
 
 class ProjectsPage extends StatefulWidget {
   const ProjectsPage({Key? key}) : super(key: key);
@@ -26,17 +27,16 @@ class _ProjectsPageState extends State<ProjectsPage> {
   @override
   Widget build(BuildContext context) {
     return material.Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: background,
       appBar: material.PreferredSize(
         preferredSize: const material.Size(640, 80),
         child: DragToMoveArea(
           child: PageHeader(
-            padding: 20,
             title: Text(
               "项目列表",
               style: TextStyle(
-                  fontSize: 34,
-                  color: Colors.blue.lightest,
+                  fontSize: 38,
+                  color: title,
                   fontFamily: "HYWenHei",
                   fontWeight: FontWeight.w100),
             ),
@@ -65,7 +65,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
                     margin: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10.0),
-                        color: Colors.grey[30]),
+                        color: item),
                     child: ListTile(
                         title: Text(
                             "${p.name}  -  ${DateTime.fromMillisecondsSinceEpoch(p.date).toLocal().toString().split(".")[0]}")),
@@ -79,7 +79,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
                     nowProject = projects.indexOf(p);
                     Navigator.of(context).pushAndRemoveUntil(
                         PageRouteBuilder(
-                            pageBuilder: (context, i, g) => const HomePage()),
+                            pageBuilder: (context, i, g) => HomePage(key: homeKey)),
                         (route) => false);
                   },
                   onSecondaryLongPress: () {
@@ -119,6 +119,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
       ),
       floatingActionButton: material.FloatingActionButton(
           child: const Icon(FluentIcons.new_team_project),
+          backgroundColor: button,
           onPressed: () async {
             getName(context).then((name) {
               if (name == null) {

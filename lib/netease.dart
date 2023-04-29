@@ -15,8 +15,8 @@ String changeLength(String text) {
 }
 
 String aes(String text, String key) {
-  final encrypter = encrypt.Encrypter(encrypt.AES(encrypt.Key.fromUtf8(key),
-      mode: encrypt.AESMode.cbc));
+  final encrypter = encrypt.Encrypter(
+      encrypt.AES(encrypt.Key.fromUtf8(key), mode: encrypt.AESMode.cbc));
   var encrypted = encrypter.encrypt(changeLength(text),
       iv: encrypt.IV.fromUtf8("0102030405060708"));
   return encrypted.base64;
@@ -80,10 +80,29 @@ Future<Response> _getSongInfo(String params, String encSecKey) {
   return http.post(Uri.parse(url),
       headers: headers, body: {"params": params, "encSecKey": encSecKey});
 }
+
+Future<Response> getSongLyric(int id) {
+  var url = "https://music.163.com/api/song/media?id=$id";
+  var headers = {
+    'authority': 'music.163.com',
+    'user-agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.135 Safari/537.36',
+    'content-type': 'application/x-www-form-urlencoded',
+    'accept': '*/*',
+    'origin': 'https://music.163.com',
+    'sec-fetch-site': 'same-origin',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-dest': 'empty',
+    'referer': 'https://music.163.com/',
+    'accept-language': 'zh-CN,zh;q=0.9',
+  };
+  return http.get(Uri.parse(url), headers: headers);
+}
+
 //TODO 包装SongInfo
 Future<Response> getSongInfo(int id) async {
   var d = {
-    "ids": "[${id}]",
+    "ids": "[$id]",
     "level": "exhigh",
     "encodeType": "",
     "csrf_token": ""

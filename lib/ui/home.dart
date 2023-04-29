@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:aria/ui/player.dart';
 import 'package:aria/ui/library.dart';
 import 'package:aria/ui/projects.dart';
-import 'package:crypto/crypto.dart';
+import 'package:aria/ui/songs.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
-import 'package:file_selector/file_selector.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:get/get.dart';
@@ -28,11 +28,10 @@ class HomePage extends StatefulWidget {
 
 class HomePageState extends State<HomePage> {
   int index = 0;
+  int editing = -1;
 
   @override
   Widget build(BuildContext context) {
-    // SongListController controller = SongListController();
-    // Get.put(controller);
     windowManager.show();
     return NavigationView(
       appBar: NavigationAppBar(
@@ -53,6 +52,7 @@ class HomePageState extends State<HomePage> {
             sleep(const Duration(milliseconds: 50));
             await windowManager.setSize(const Size(640, 420));
             await windowManager.center();
+            nowProject = -1;
             Navigator.of(context).pushAndRemoveUntil(
                 PageRouteBuilder(
                     pageBuilder: (context, i, g) => const ProjectsPage()),
@@ -73,146 +73,22 @@ class HomePageState extends State<HomePage> {
           ),
         ),
       ),
+      paneBodyBuilder: (item, body) {
+        if (index == 0) {
+          return editing == -1
+              ? const SongList()
+              : EditorPage(song: projects[nowProject].songs[editing]);
+        } else {
+          return body!;
+        }
+      },
       pane: NavigationPane(
         displayMode: PaneDisplayMode.compact,
         items: [
           PaneItem(
               icon: const Icon(material.Icons.playlist_play),
               title: const Text("已选歌曲"),
-              body: material.Scaffold(
-                backgroundColor: Colors.grey[110],
-                floatingActionButton: Stack(
-                  children: <Widget>[
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 70),
-                      child: Align(
-                        alignment: Alignment.bottomRight,
-                        child: material.FloatingActionButton(
-                          heroTag: "btn1",
-                          onPressed: () => generate(context),
-                          child: const Icon(material.Icons.gavel_rounded),
-                        ),
-                      ),
-                    ),
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: material.FloatingActionButton(
-                        heroTag: "btn2",
-                        onPressed: () async {
-                          const XTypeGroup musicGroup = XTypeGroup(
-                            label: "音频文件",
-                            extensions: <String>["mp3", "wma", "wav", "aac"],
-                          );
-                          final List<XFile> files = await openFiles(
-                              acceptedTypeGroups: [
-                                musicGroup,
-                                const XTypeGroup()
-                              ]);
-                          if (files.isEmpty) {
-                            return;
-                          }
-                          bool? result = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => ContentDialog(
-                              title: const Text("导入本地文件"),
-                              content: const Text(
-                                  "是否复制一份文件？\n可以防止源文件丢失或环境迁移，但会多占用一份空间"),
-                              actions: [
-                                Button(
-                                    child: const Text("否"),
-                                    onPressed: () =>
-                                        Navigator.pop(context, false)),
-                                FilledButton(
-                                    child: const Text("是"),
-                                    onPressed: () =>
-                                        Navigator.pop(context, true))
-                              ],
-                            ),
-                          );
-                          if (result!) {
-                            for (XFile f in files) {
-                              File file = File(f.path);
-                              String md = md5
-                                  .convert(file.readAsBytesSync())
-                                  .toString();
-                              if (!File(
-                                      "${cacheDir.path}/$md.${f.name.split(".").last}")
-                                  .existsSync()) {
-                                await file.copy(
-                                    "${cacheDir.path}/$md.${f.name.split(".").last}");
-                              }
-                              projects[nowProject].songs.add(Song(
-                                  f.name, 0, "Unknown",
-                                  url: "$md.${f.name.split(".").last}"));
-                              // save();
-                            }
-                            setState(() {});
-                          } else {
-                            for (XFile f in files) {
-                              projects[nowProject]
-                                  .songs
-                                  .add(Song(f.name, 0, "Unknown", url: f.path));
-                              print(f.path);
-                            }
-                            setState(() {});
-                          }
-                        },
-                        child: const Icon(
-                            material.Icons.insert_drive_file_outlined),
-                      ),
-                    ),
-                  ],
-                ),
-                body: ReorderableListView(
-                  header: Container(
-                    alignment: const Alignment(-0.96, 0),
-                    height: 80,
-                    child: Text(
-                      '已选歌曲',
-                      style: TextStyle(
-                          fontSize: 30,
-                          color: Colors.blue.lightest,
-                          fontFamily: "HYWenHei"),
-                    ),
-                  ),
-                  children: projects[nowProject].songs.map((song) {
-                    return GestureDetector(
-                      key: UniqueKey(),
-                      child: Container(
-                        height: 40,
-                        width: double.infinity,
-                        alignment: const Alignment(-0.97, 0),
-                        margin: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10.0),
-                            color: Colors.grey[30]),
-                        child: Text(
-                          "${song.name}  -  ${song.author}",
-                          style: const TextStyle(fontFamily: "HYWenHei"),
-                        ),
-                      ),
-                      onDoubleTap: () {
-                        //TODO Edit song
-                      },
-                      onSecondaryTap: () {
-                        setState(() {
-                          projects[nowProject].songs.remove(song);
-                        });
-                      },
-                    );
-                  }).toList(),
-                  onReorder: (int oldIndex, int newIndex) {
-                    setState(() {
-                      //交换数据
-                      if (newIndex > oldIndex) {
-                        newIndex -= 1;
-                      }
-                      var item = projects[nowProject].songs.removeAt(oldIndex);
-                      projects[nowProject].songs.insert(newIndex, item);
-                    });
-                  },
-                ),
-              )),
+              body: const SongList()),
           PaneItem(
             icon: const Icon(material.Icons.library_music),
             title: const Text("音乐库"),
@@ -268,6 +144,7 @@ void generate(BuildContext homeContext) async {
           mode: FileMode.append);
       await netease.getSongInfo(song.id).then((value) {
         Map<String, dynamic> map = json.decode(value.body);
+        // print(map);
         song.url = map["data"][0]["url"];
       });
     } else {
@@ -290,7 +167,7 @@ void generate(BuildContext homeContext) async {
   Navigator.pop(dialogContext);
   for (var song in projects[nowProject].songs) {
     // print(song.toJson());
-    if (!song.url!.startsWith("http")) {
+    if (song.url != null && !song.url!.startsWith("http")) {
       continue;
     }
     try {
@@ -304,7 +181,7 @@ void generate(BuildContext homeContext) async {
           builder: (context) {
             dialogContext = context;
             return ContentDialog(
-              title: Text("合成中"),
+              title: const Text("合成中"),
               content: Text("正在下载《${song.name}》"),
               actions: [
                 ValueListenableBuilder<double>(
@@ -330,7 +207,7 @@ void generate(BuildContext homeContext) async {
           context: homeContext,
           builder: (context) {
             return ContentDialog(
-              title: Text("出错啦！"),
+              title: const Text("出错啦！"),
               content: Text("下载《${song.name}》时出现错误：\n$e\n点击空白处关闭"),
             );
           },
@@ -462,11 +339,11 @@ void generate(BuildContext homeContext) async {
       await showDialog(
           context: homeContext,
           builder: (context) => ContentDialog(
-            title: const Text(
-              "出错啦！",
-            ),
-            content: Text("$e\ntip: 请关闭${projects[nowProject].name}.mp3文件"),
-          ),
+                title: const Text(
+                  "出错啦！",
+                ),
+                content: Text("$e\ntip: 请关闭${projects[nowProject].name}.mp3文件"),
+              ),
           barrierDismissible: true);
       return;
     }

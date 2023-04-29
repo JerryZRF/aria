@@ -1,11 +1,12 @@
 import 'dart:convert';
 
 import 'package:aria/type/song.dart';
+import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/material.dart';
-import 'package:ftoast/ftoast.dart';
 
 import '../main.dart';
 import '../netease.dart' as netease;
+import 'colors.dart';
 
 class MusicLibrary extends StatefulWidget {
   const MusicLibrary({super.key});
@@ -21,65 +22,39 @@ class _MusicLibraryState extends State<MusicLibrary> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: SearchBarWidget(
-          onchangeValue: (value) {
-            _nowValue = value;
-          },
-          onEditingComplete: () {
-            songs.clear();
-            //TODO
-            netease.searchSongs(_nowValue).then((value) {
-              Map<String, dynamic> map = json.decode(value.body);
-              List songList = map["result"]["songs"];
-              for (int i = 0; i < songList.length; i++) {
-                print(songList[i]);
-                if (songList[i]["privilege"]["sp"] != 7) {
-                  continue;
-                }
-                String authors = "";
-                for (var author in songList[i]["ar"]) {
-                  authors += author["name"] + ", ";
-                }
-                songs.add(Song(songList[i]["name"], songList[i]["id"] as int,
-                    authors.substring(0, authors.length - 2)));
-              }
-              setState(() {});
-            });
-          },
-        ),
-      ),
+      backgroundColor: background,
       body: Column(
         children: [
+          SearchBarWidget(
+            onchangeValue: (value) {
+              _nowValue = value;
+            },
+            onEditingComplete: () {
+              search();
+            },
+          ),
           Expanded(
               child: ListView.builder(
                   itemCount: songs.length,
                   itemBuilder: (BuildContext context, int index) {
                     return GestureDetector(
                         onTap: () {
-                          // if (projects[nowProject]
-                          //     .songs
-                          //     .contains(songs[index])) {
-                          //   FToast.toast(context,
-                          //       msg: "《${songs[index].name}》已经在播放列表中",
-                          //       msgStyle:
-                          //           const TextStyle(fontFamily: "HYWenHei"),
-                          //       color: Colors.grey.shade400,
-                          //       duration: 500);
-                          //   return;
-                          // }
                           projects[nowProject].songs.add(songs[index]);
-                          FToast.toast(context,
-                              msg: "已加入《${songs[index].name}》",
-                              msgStyle: const TextStyle(fontFamily: "HYWenHei"),
-                              color: Colors.grey.shade400,
-                              duration: 500);
+                          fluent.displayInfoBar(context, builder: (context, close) {
+                            return fluent.InfoBar(
+                              title: Text("已加入《${songs[index].name}》"),
+                              severity: fluent.InfoBarSeverity.success,
+                            );
+                          }, duration: const Duration(milliseconds: 800));
                         },
                         child: Container(
+                            height: 40,
                             width: double.infinity,
-                            height: 50,
-                            alignment: Alignment.center,
+                            alignment: const Alignment(-0.97, 0),
                             margin: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10.0),
+                                color: item),
                             child: Text(
                               "${songs[index].name}  -  ${songs[index].author}",
                               style: const TextStyle(fontFamily: "HYWenHei"),
@@ -88,14 +63,15 @@ class _MusicLibraryState extends State<MusicLibrary> {
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
-        items: const [
-          BottomNavigationBarItem(
+        items: [
+          const BottomNavigationBarItem(
             icon: Icon(Icons.music_note),
             label: "QQ音乐",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.music_note),
+            icon: const Icon(Icons.music_note),
             label: "网易云",
+            activeIcon: Icon(Icons.music_note, color: button,),
           ),
         ],
         selectedLabelStyle: const TextStyle(fontFamily: "HYWenHei"),
@@ -105,11 +81,13 @@ class _MusicLibraryState extends State<MusicLibrary> {
         onTap: (index) {
           if (index == _nowIndex) return;
           if (index == 0) {
-            FToast.toast(context,
-                msg: "QQ音乐暂不受支持",
-                msgStyle: const TextStyle(fontFamily: "HYWenHei"),
-                color: Colors.grey.shade400,
-                duration: 800);
+            fluent.displayInfoBar(context, builder: (context, close) {
+              return const fluent.InfoBar(
+                title: Text("出错啦"),
+                content: Text("QQ音乐暂不受支持"),
+                severity: fluent.InfoBarSeverity.error,
+              );
+            }, duration: const Duration(seconds: 1));
             // fluent.showDialog(context: context, builder: (context) => fluent.ContentDialog(content: fluent.Text("暂不支持QQ音乐"),));
             return;
           }
@@ -121,7 +99,34 @@ class _MusicLibraryState extends State<MusicLibrary> {
     );
   }
 
-  void onClickSongInfo(int index) {}
+  void search() {
+    songs.clear();
+    //TODO
+    netease.searchSongs(_nowValue).then((value) {
+      setState(() {
+        Map<String, dynamic> map = json.decode(value.body);
+        if (map["result"] == null || map["result"]["songs"] == null) {
+          return;
+        }
+        List songList = map["result"]["songs"];
+        for (int i = 0; i < songList.length; i++) {
+          // print(songList[i]);
+          if (songList[i]["privilege"]["sp"] != 7) {
+            continue;
+          }
+          String authors = "";
+          for (var author in songList[i]["ar"]) {
+            authors += author["name"] + ", ";
+          }
+          songs.add(Song(
+              songList[i]["name"],
+              songList[i]["id"] as int,
+              authors.substring(0, authors.length - 2),
+              songList[i]["al"]["picUrl"]));
+        }
+      });
+    });
+  }
 }
 
 class SearchBarWidget extends StatefulWidget {
@@ -136,11 +141,9 @@ class SearchBarWidget extends StatefulWidget {
 }
 
 class SearchBarWidgetState extends State<SearchBarWidget> {
-  ///编辑控制器
   late TextEditingController _controller;
 
-  ///是否显示删除按钮
-  bool _hasDeleteIcon = false;
+  bool _hasDeleteIcon = true;
 
   @override
   void initState() {
@@ -209,7 +212,8 @@ class SearchBarWidgetState extends State<SearchBarWidget> {
         FocusScope.of(context).requestFocus(FocusNode());
         widget.onEditingComplete();
       },
-      style: const TextStyle(fontSize: 14, color: Colors.black),
+      style: const TextStyle(
+          fontSize: 14, color: Colors.black, fontFamily: "HYWenHei"),
     );
   }
 
@@ -217,14 +221,15 @@ class SearchBarWidgetState extends State<SearchBarWidget> {
   Widget build(BuildContext context) {
     return Container(
       //背景与圆角
+      margin: const EdgeInsets.only(left: 15, right: 15, bottom: 15),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.black12, width: 1.0), //边框
-        color: Colors.black12,
-        borderRadius: const BorderRadius.all(Radius.circular(18)),
+        border: Border.all(color: Colors.black12, width: 1.2), //边框
+        color: const Color(0xffc2ccd0),
+        borderRadius: BorderRadius.circular(18),
       ),
       alignment: Alignment.center,
       height: 36,
-      padding: const EdgeInsets.fromLTRB(10.0, 0.0, 0.0, 0.0),
+      padding: const EdgeInsets.only(left: 10),
       child: buildTextField(),
     );
   }
@@ -235,14 +240,3 @@ class SearchBarWidgetState extends State<SearchBarWidget> {
     _controller.dispose();
   }
 }
-//
-// class SongListController extends GetxController {
-//   final List<Song> songs = [];
-//   bool add(Song song) {
-//     if (songs.contains(song)) {
-//       return false;
-//     }
-//     songs.add(song);
-//     return true;
-//   }
-// }

@@ -9,28 +9,30 @@ String format(String source) {
   return source.replaceAll(",", ", ").replaceAll(":", ": ");
 }
 
-Future saveDialog(BuildContext context) async{
+Future saveDialog(BuildContext context) async {
   bool? result = await showDialog<bool>(
       context: context,
       builder: (context) => ContentDialog(
-        title: const Text("保存"),
-        content: const Text("数据无价，谨慎操作~"),
-        actions: [
-          FilledButton(
-              child: const Text("保存"),
-              onPressed: () => Navigator.pop(context, true)),
-          Button(
-              child: const Text("不保存"),
-              onPressed: () => Navigator.pop(context, false))
-        ],
-      ));
+            title: const Text("保存"),
+            content: const Text("数据无价，谨慎操作~"),
+            actions: [
+              FilledButton(
+                  child: const Text("保存"),
+                  onPressed: () => Navigator.pop(context, true)),
+              Button(
+                  child: const Text("不保存"),
+                  onPressed: () => Navigator.pop(context, false))
+            ],
+          ));
   if (result!) {
     await save();
   }
 }
 
 Future save() async {
-  projects[nowProject].date = DateTime.now().millisecondsSinceEpoch;
+  if (nowProject != -1) {
+    projects[nowProject].date = DateTime.now().millisecondsSinceEpoch;
+  }
   File file = File("./config.json");
   await file.writeAsString(jsonEncode({"projects": projects}));
 }
