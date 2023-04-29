@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:aria/main.dart';
 import 'package:aria/type/song.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -36,12 +34,12 @@ class EditorState extends State<EditorPage> with TickerProviderStateMixin {
         .setSource(DeviceFileSource(widget.song.id == 0
             ? widget.song.url!
             : "${cacheDir.path}/${widget.song.id}.mp3"))
-        .then((_) {
-      sleep(const Duration(milliseconds: 75));
-      player.getDuration().then((value) {
-        total = value!.inMilliseconds;
-        print(value.inSeconds);
-      });
+        .then((_) async {
+      while (total <= 0) {
+        await player.getDuration().then((value) {
+          total = value!.inMilliseconds;
+        });
+      }
     });
     player.onPositionChanged.listen((postion) async {
       print(postion);
@@ -51,20 +49,29 @@ class EditorState extends State<EditorPage> with TickerProviderStateMixin {
     });
     return fluent.ScaffoldPage(
       header: fluent.PageHeader(
-        title: const fluent.Text("播放器"),
-        leading: Container(padding: const EdgeInsets.only(left: 15, right: 10),child: fluent.IconButton(
-            style: fluent.ButtonStyle(iconSize: fluent.ButtonState.all(26)),
-            icon: const Icon(fluent.FluentIcons.back),
-            onPressed: () {
-              homeKey.currentState?.editing = -1;
-              homeKey.currentState?.setState(() {});
-            }),)
-      ),
+          title: const fluent.Text("播放器"),
+          leading: Container(
+            padding: const EdgeInsets.only(left: 15, right: 10),
+            child: fluent.IconButton(
+                style: fluent.ButtonStyle(iconSize: fluent.ButtonState.all(26)),
+                icon: const Icon(fluent.FluentIcons.back),
+                onPressed: () {
+                  homeKey.currentState?.editing = -1;
+                  homeKey.currentState?.setState(() {});
+                }),
+          )),
       content: Column(
         children: [
-          fluent.Text(widget.song.name, style: const fluent.TextStyle(fontSize: 26),),
-          fluent.Text(widget.song.author,),
-          const SizedBox(height: 20,),
+          fluent.Text(
+            widget.song.name,
+            style: const fluent.TextStyle(fontSize: 26),
+          ),
+          fluent.Text(
+            widget.song.author,
+          ),
+          const SizedBox(
+            height: 20,
+          ),
           Row(
             children: [
               const SizedBox(
@@ -72,15 +79,15 @@ class EditorState extends State<EditorPage> with TickerProviderStateMixin {
               ),
               widget.song.poster != null
                   ? CachedNetworkImage(
-                      width: 350,
-                      height: 350,
+                      width: 320,
+                      height: 320,
                       placeholder: (context, url) => const fluent.ProgressBar(),
                       imageUrl: widget.song.poster!)
                   : const SizedBox(
-                      width: 400,
+                      width: 320,
                     ),
               const SizedBox(
-                width: 50,
+                width: 75,
               ),
               widget.song.lyric == null
                   ? const SizedBox()
@@ -95,9 +102,11 @@ class EditorState extends State<EditorPage> with TickerProviderStateMixin {
             height: 75,
           ),
           ValueListenableBuilder<Duration>(
-            builder: (context, value, child) => fluent.Text("$value / ${Duration(milliseconds: total)}"),
+            builder: (context, value, child) =>
+                fluent.Text("$value / ${Duration(milliseconds: total)}"),
             valueListenable: pos,
-          ),          Container(
+          ),
+          Container(
             padding: const EdgeInsets.only(left: 100, right: 100),
             child: ValueListenableBuilder<double>(
               builder: (context, value, child) => fluent.Slider(

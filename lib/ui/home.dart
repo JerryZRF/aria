@@ -50,6 +50,7 @@ class HomePageState extends State<HomePage> {
             await saveDialog(context);
             await windowManager.hide();
             sleep(const Duration(milliseconds: 50));
+            windowManager.setMinimumSize(const Size(640, 420));
             await windowManager.setSize(const Size(640, 420));
             await windowManager.center();
             nowProject = -1;
@@ -59,19 +60,35 @@ class HomePageState extends State<HomePage> {
                 (route) => false);
           },
         ),
-        actions: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: GestureDetector(
-            child: const Icon(
-              material.Icons.close,
-              size: 24,
+        actions: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+          Container(
+            padding:
+            const EdgeInsets.symmetric(horizontal: 5, vertical: 10),
+            child: GestureDetector(
+              child: const Icon(
+                material.Icons.minimize,
+                size: 24,
+              ),
+              onTap: () {
+                windowManager.minimize();
+              },
             ),
-            onTap: () async {
-              await saveDialog(context);
-              exit(0);
-            },
           ),
-        ),
+          Container(
+            padding:
+            const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+            child: GestureDetector(
+              child: const Icon(
+                material.Icons.close,
+                size: 24,
+              ),
+              onTap: () {
+                saveDialog(context);
+                exit(0);
+              },
+            ),
+          ),
+        ])
       ),
       paneBodyBuilder: (item, body) {
         if (index == 0) {

@@ -32,28 +32,46 @@ class _ProjectsPageState extends State<ProjectsPage> {
         preferredSize: const material.Size(640, 80),
         child: DragToMoveArea(
           child: PageHeader(
-            title: Text(
-              "项目列表",
-              style: TextStyle(
-                  fontSize: 38,
-                  color: title,
-                  fontFamily: "HYWenHei",
-                  fontWeight: FontWeight.w100),
-            ),
-            commandBar: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
-              child: GestureDetector(
-                child: const Icon(
-                  material.Icons.close,
-                  size: 24,
+              title: Container(
+                padding: const EdgeInsets.only(left: 10, top: 10),
+                child: Text(
+                  "项目列表",
+                  style: TextStyle(
+                      fontSize: 38,
+                      color: title,
+                      fontFamily: "HYWenHei",
+                      fontWeight: FontWeight.w100),
                 ),
-                onTap: () {
-                  saveDialog(context);
-                  exit(0);
-                },
               ),
-            ),
-          ),
+              commandBar: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 5, vertical: 10),
+                  child: GestureDetector(
+                    child: const Icon(
+                      material.Icons.minimize,
+                      size: 24,
+                    ),
+                    onTap: () {
+                      windowManager.minimize();
+                    },
+                  ),
+                ),
+                Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                  child: GestureDetector(
+                    child: const Icon(
+                      material.Icons.close,
+                      size: 24,
+                    ),
+                    onTap: () {
+                      saveDialog(context);
+                      exit(0);
+                    },
+                  ),
+                ),
+              ])),
         ),
       ),
       body: ListView(
@@ -64,8 +82,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
                     width: double.infinity,
                     margin: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10.0),
-                        color: item),
+                        borderRadius: BorderRadius.circular(10.0), color: item),
                     child: ListTile(
                         title: Text(
                             "${p.name}  -  ${DateTime.fromMillisecondsSinceEpoch(p.date).toLocal().toString().split(".")[0]}")),
@@ -73,13 +90,15 @@ class _ProjectsPageState extends State<ProjectsPage> {
                   onDoubleTap: () async {
                     await windowManager.hide();
                     sleep(const Duration(milliseconds: 100));
+                    windowManager.setMinimumSize(const Size(1280, 768));
                     await windowManager.setSize(const Size(1280, 768));
                     await windowManager.center();
 
                     nowProject = projects.indexOf(p);
                     Navigator.of(context).pushAndRemoveUntil(
                         PageRouteBuilder(
-                            pageBuilder: (context, i, g) => HomePage(key: homeKey)),
+                            pageBuilder: (context, i, g) =>
+                                HomePage(key: homeKey)),
                         (route) => false);
                   },
                   onSecondaryLongPress: () {
@@ -95,15 +114,15 @@ class _ProjectsPageState extends State<ProjectsPage> {
                     bool? result = await showDialog<bool>(
                         context: context,
                         builder: (context) => ContentDialog(
-                              title: Text("删除项目"),
-                              content: Text("确定要删除吗？\n数据无价，三思而后行"),
+                              title: const Text("删除项目"),
+                              content: const Text("确定要删除吗？\n数据无价，三思而后行"),
                               actions: [
                                 FilledButton(
-                                    child: Text("狠心删除"),
+                                    child: const Text("狠心删除"),
                                     onPressed: () =>
                                         Navigator.pop(context, true)),
                                 Button(
-                                    child: Text("算了吧"),
+                                    child: const Text("算了吧"),
                                     onPressed: () =>
                                         Navigator.pop(context, false))
                               ],
@@ -118,7 +137,6 @@ class _ProjectsPageState extends State<ProjectsPage> {
             .toList(),
       ),
       floatingActionButton: material.FloatingActionButton(
-          child: const Icon(FluentIcons.new_team_project),
           backgroundColor: button,
           onPressed: () async {
             getName(context).then((name) {
@@ -130,7 +148,8 @@ class _ProjectsPageState extends State<ProjectsPage> {
               save();
               setState(() {});
             });
-          }),
+          },
+          child: const Icon(FluentIcons.new_team_project)),
     );
   }
 }

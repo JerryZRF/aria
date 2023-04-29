@@ -33,7 +33,7 @@ void main() async {
     );
     await windowManager.setClosable(true);
     await windowManager.setSize(const Size(640, 420));
-    // await windowManager.setSize(const Size(1280, 768));
+    windowManager.setMinimumSize(const Size(640, 420));
     await windowManager.center();
     await windowManager.show();
     await windowManager.setPreventClose(true);
