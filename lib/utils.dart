@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:aria/type/project.dart';
+import 'package:aria/type/song.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 import 'main.dart';
@@ -26,6 +28,8 @@ Future saveDialog(BuildContext context) async {
           ));
   if (result!) {
     await save();
+  } else {
+    load();
   }
 }
 
@@ -35,4 +39,20 @@ Future save() async {
   }
   File file = File("./config.json");
   await file.writeAsString(jsonEncode({"projects": projects}));
+}
+
+void load() {
+  if (File("./config.json").existsSync()) {
+    Map<String, dynamic> config =
+    jsonDecode(File("./config.json").readAsStringSync());
+    projects.clear();
+    (config["projects"] as List).cast().forEach((project) {
+      List<Song> songs = [];
+      for (var song in (project["songs"] as List)) {
+        songs.add(Song(song["name"], song["id"], song["author"], song["poster"]));
+        songs.last.url = song["url"];
+      }
+      projects.add(Project(project["name"], project["date"], songs));
+    });
+  }
 }

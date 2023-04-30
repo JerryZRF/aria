@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:aria/ui/player.dart';
 import 'package:aria/ui/library.dart';
 import 'package:aria/ui/projects.dart';
+import 'package:aria/ui/settings.dart';
 import 'package:aria/ui/songs.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
@@ -35,61 +36,58 @@ class HomePageState extends State<HomePage> {
     windowManager.show();
     return NavigationView(
       appBar: NavigationAppBar(
-        title: DragToMoveArea(
-            child: Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: Text(
-            "Aria  -  ${projects[nowProject].name}",
-            style: const TextStyle(fontSize: 18),
-          ),
-        )),
-        height: 50,
-        leading: IconButton(
-          icon: const Icon(FluentIcons.back),
-          onPressed: () async {
-            await saveDialog(context);
-            await windowManager.hide();
-            sleep(const Duration(milliseconds: 50));
-            windowManager.setMinimumSize(const Size(640, 420));
-            await windowManager.setSize(const Size(640, 420));
-            await windowManager.center();
-            nowProject = -1;
-            Navigator.of(context).pushAndRemoveUntil(
-                PageRouteBuilder(
-                    pageBuilder: (context, i, g) => const ProjectsPage()),
-                (route) => false);
-          },
-        ),
-        actions: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 5, vertical: 10),
-            child: GestureDetector(
-              child: const Icon(
-                material.Icons.minimize,
-                size: 24,
-              ),
-              onTap: () {
-                windowManager.minimize();
-              },
+          title: DragToMoveArea(
+              child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              "Aria  -  ${projects[nowProject].name}",
+              style: const TextStyle(fontSize: 18),
             ),
+          )),
+          height: 50,
+          leading: IconButton(
+            icon: const Icon(FluentIcons.back),
+            onPressed: () async {
+              await saveDialog(context);
+              await windowManager.hide();
+              sleep(const Duration(milliseconds: 50));
+              windowManager.setMinimumSize(const Size(640, 420));
+              await windowManager.setSize(const Size(640, 420));
+              await windowManager.center();
+              nowProject = -1;
+              Navigator.of(context).pushAndRemoveUntil(
+                  PageRouteBuilder(
+                      pageBuilder: (context, i, g) => const ProjectsPage()),
+                  (route) => false);
+            },
           ),
-          Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-            child: GestureDetector(
-              child: const Icon(
-                material.Icons.close,
-                size: 24,
+          actions: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 10),
+              child: GestureDetector(
+                child: const Icon(
+                  material.Icons.minimize,
+                  size: 24,
+                ),
+                onTap: () {
+                  windowManager.minimize();
+                },
               ),
-              onTap: () {
-                saveDialog(context);
-                exit(0);
-              },
             ),
-          ),
-        ])
-      ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+              child: GestureDetector(
+                child: const Icon(
+                  material.Icons.close,
+                  size: 24,
+                ),
+                onTap: () {
+                  saveDialog(context);
+                  exit(0);
+                },
+              ),
+            ),
+          ])),
       paneBodyBuilder: (item, body) {
         if (index == 0) {
           return editing == -1
@@ -111,10 +109,10 @@ class HomePageState extends State<HomePage> {
             title: const Text("音乐库"),
             body: const ScaffoldPage(content: MusicLibrary()),
           ),
-          // PaneItem(
-          //     icon: const Icon(material.Icons.settings),
-          //     body: SettingsPage()
-          // ),
+          PaneItem(
+              icon: const Icon(material.Icons.settings),
+              title: const Text("设置"),
+              body: SettingsPage()),
         ],
         selected: index,
         onChanged: (newIndex) {
@@ -161,8 +159,18 @@ void generate(BuildContext homeContext) async {
           mode: FileMode.append);
       await netease.getSongInfo(song.id).then((value) {
         Map<String, dynamic> map = json.decode(value.body);
-        // print(map);
         song.url = map["data"][0]["url"];
+        if (song.url == null) {
+          Navigator.pop(dialogContext);
+          showDialog(
+              context: homeContext,
+              builder: (context) => ContentDialog(
+                    title: const Text("出错啦！"),
+                    content: Text("怎么会混进《${song.name}》这首付费歌曲呢?"),
+                  ),
+              barrierDismissible: true);
+          ok = false;
+        }
       });
     } else {
       //本地歌曲
@@ -170,6 +178,7 @@ void generate(BuildContext homeContext) async {
           mode: FileMode.append);
     }
   }
+  if (!ok) return;
   Dio dio = Dio();
   if (proxy != null) {
     dio.httpClientAdapter = IOHttpClientAdapter(
@@ -183,15 +192,13 @@ void generate(BuildContext homeContext) async {
   }
   Navigator.pop(dialogContext);
   for (var song in projects[nowProject].songs) {
-    // print(song.toJson());
     if (song.url != null && !song.url!.startsWith("http")) {
       continue;
     }
+    if (File("${cacheDir.path}/${song.id}.mp3").existsSync()) {
+      continue;
+    }
     try {
-      if (File("${cacheDir.path}/${song.id}.mp3").existsSync()) {
-        continue;
-      }
-      // print("${cacheDir.path}/${song.id}.mp3");
       ValueNotifier<double> progress = ValueNotifier(0);
       showDialog(
           context: homeContext,
@@ -229,11 +236,6 @@ void generate(BuildContext homeContext) async {
             );
           },
           barrierDismissible: true);
-      // pd.update(
-      //   message: "下载《${song.name}》时发生错误：\n$e\n点击空白处关闭",
-      //   progress: 0,
-      //   isDismissible: true,
-      // );
       e.printInfo();
       e.printError();
       return;

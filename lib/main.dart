@@ -1,11 +1,10 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:aria/type/project.dart';
-import 'package:aria/type/song.dart';
 import 'package:aria/ui/colors.dart';
 import 'package:aria/ui/home.dart';
 import 'package:aria/ui/projects.dart';
+import 'package:aria/utils.dart';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:window_manager/window_manager.dart';
@@ -39,24 +38,12 @@ void main() async {
     await windowManager.setPreventClose(true);
     await windowManager.setSkipTaskbar(false);
   });
-  if (File("./config.json").existsSync()) {
-    Map<String, dynamic> config =
-    jsonDecode(File("./config.json").readAsStringSync());
-    projects.clear();
-    (config["projects"] as List).cast().forEach((project) {
-      List<Song> songs = [];
-      for (var song in (project["songs"] as List)) {
-        songs.add(Song(song["name"], song["id"], song["author"], song["poster"]));
-        songs.last.url = song["url"];
-      }
-      projects.add(Project(project["name"], project["date"], songs));
-    });
-  }
+  load();
   runApp(FluentApp(
     navigatorKey: nk,
     home: const ProjectsPage(),
     theme: FluentThemeData(
-      navigationPaneTheme: NavigationPaneThemeData(backgroundColor:  Color(0xfff2ecde)),
+      navigationPaneTheme: const NavigationPaneThemeData(backgroundColor:  Color(0xfff2ecde)),
         dialogTheme: const ContentDialogThemeData(
             titleStyle: TextStyle(fontWeight: FontWeight.w100, color: Colors.black, fontSize: 34, fontFamily: "HYWenHei",)),
         fontFamily: "HYWenHei",

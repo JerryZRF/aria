@@ -106,10 +106,8 @@ class SongListState extends State<SongList> {
           height: 80,
           child: Text(
             '已选歌曲',
-            style: TextStyle(
-                fontSize: 34,
-                color: title,
-                fontFamily: "HYWenHei"),
+            style:
+                TextStyle(fontSize: 34, color: title, fontFamily: "HYWenHei"),
           ),
         ),
         children: projects[nowProject].songs.map((song) {
@@ -121,8 +119,7 @@ class SongListState extends State<SongList> {
               alignment: const Alignment(-0.97, 0),
               margin: const EdgeInsets.all(3),
               decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10.0),
-                  color: item),
+                  borderRadius: BorderRadius.circular(10.0), color: item),
               child: Text(
                 "${song.name}  -  ${song.author}",
                 style: const TextStyle(fontFamily: "HYWenHei"),
@@ -163,11 +160,26 @@ class SongListState extends State<SongList> {
                       },
                     );
                   }
-                  await netease.getSongInfo(song.id).then((value) {
+                  bool ok = true;
+                  await netease.getSongInfo(song.id).then((value) async {
                     Map<String, dynamic> map = jsonDecode(value.body);
                     song.url = map["data"][0]["url"];
-                    // song.poster = map["data"][0][""]
+                    if (song.url == null) {
+                      Navigator.pop(dialog);
+                      await showDialog(
+                          context: context,
+                          builder: (context) {
+                            return ContentDialog(
+                              title: const Text("出错啦！"),
+                              content: Text("怎么会混进《${song.name}》这首付费歌曲呢?"),
+                            );
+                          },
+                          barrierDismissible: true);
+
+                      ok = false;
+                    }
                   });
+                  if (!ok) return;
                   await dio.downloadUri(
                       Uri.parse(song.url!), "${cacheDir.path}/${song.id}.mp3");
                   Navigator.pop(dialog);
