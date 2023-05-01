@@ -56,7 +56,7 @@ class EditorState extends State<EditorPage> with TickerProviderStateMixin {
                 style: fluent.ButtonStyle(iconSize: fluent.ButtonState.all(26)),
                 icon: const Icon(fluent.FluentIcons.back),
                 onPressed: () {
-                  homeKey.currentState?.editing = -1;
+                  homeKey.currentState?.playing = -1;
                   homeKey.currentState?.setState(() {});
                 }),
           )),

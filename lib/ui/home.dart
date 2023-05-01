@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:aria/ui/player.dart';
@@ -6,14 +5,10 @@ import 'package:aria/ui/library.dart';
 import 'package:aria/ui/projects.dart';
 import 'package:aria/ui/settings.dart';
 import 'package:aria/ui/songs.dart';
-import 'package:dio/dio.dart';
-import 'package:dio/io.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
-import 'package:get/get.dart';
 import 'package:window_manager/window_manager.dart';
 
-import '../netease.dart' as netease;
 import '../main.dart';
 import '../type/song.dart';
 import '../utils.dart';
@@ -29,7 +24,7 @@ class HomePage extends StatefulWidget {
 
 class HomePageState extends State<HomePage> {
   int index = 0;
-  int editing = -1;
+  int playing = -1;
 
   @override
   Widget build(BuildContext context) {
@@ -90,9 +85,9 @@ class HomePageState extends State<HomePage> {
           ])),
       paneBodyBuilder: (item, body) {
         if (index == 0) {
-          return editing == -1
+          return playing == -1
               ? const SongList()
-              : EditorPage(song: projects[nowProject].songs[editing]);
+              : EditorPage(song: projects[nowProject].songs[playing]);
         } else {
           return body!;
         }
@@ -112,7 +107,7 @@ class HomePageState extends State<HomePage> {
           PaneItem(
               icon: const Icon(material.Icons.settings),
               title: const Text("设置"),
-              body: SettingsPage()),
+              body: const SettingsPage()),
         ],
         selected: index,
         onChanged: (newIndex) {
@@ -132,21 +127,7 @@ void generate(BuildContext homeContext) async {
   }
   cacheDir.createSync();
   late BuildContext dialogContext;
-  showDialog(
-      context: homeContext,
-      builder: (context) {
-        dialogContext = context;
-        return ContentDialog(
-          title: const Text("合成中！"),
-          content: Row(
-            children: const <Widget>[
-              Text("正在准备资源，很快就好啦"),
-              Expanded(child: SizedBox()),
-              ProgressRing(),
-            ],
-          ),
-        );
-      });
+
   File listFile = File("${cacheDir.path}/list.txt");
   if (listFile.existsSync()) {
     await listFile.delete();
@@ -157,21 +138,7 @@ void generate(BuildContext homeContext) async {
       //在线歌曲
       await listFile.writeAsString("file '${song.id}.mp3'\n",
           mode: FileMode.append);
-      await netease.getSongInfo(song.id).then((value) {
-        Map<String, dynamic> map = json.decode(value.body);
-        song.url = map["data"][0]["url"];
-        if (song.url == null) {
-          Navigator.pop(dialogContext);
-          showDialog(
-              context: homeContext,
-              builder: (context) => ContentDialog(
-                    title: const Text("出错啦！"),
-                    content: Text("怎么会混进《${song.name}》这首付费歌曲呢?"),
-                  ),
-              barrierDismissible: true);
-          ok = false;
-        }
-      });
+      await initSong(song, homeContext).then((value) => ok = value); //获取下载链接
     } else {
       //本地歌曲
       await listFile.writeAsString("file '${song.url}'\n",
@@ -179,18 +146,6 @@ void generate(BuildContext homeContext) async {
     }
   }
   if (!ok) return;
-  Dio dio = Dio();
-  if (proxy != null) {
-    dio.httpClientAdapter = IOHttpClientAdapter(
-      onHttpClientCreate: (client) {
-        client.findProxy = (uri) {
-          return 'PROXY $proxy';
-        };
-        return client;
-      },
-    );
-  }
-  Navigator.pop(dialogContext);
   for (var song in projects[nowProject].songs) {
     if (song.url != null && !song.url!.startsWith("http")) {
       continue;
@@ -198,48 +153,8 @@ void generate(BuildContext homeContext) async {
     if (File("${cacheDir.path}/${song.id}.mp3").existsSync()) {
       continue;
     }
-    try {
-      ValueNotifier<double> progress = ValueNotifier(0);
-      showDialog(
-          context: homeContext,
-          builder: (context) {
-            dialogContext = context;
-            return ContentDialog(
-              title: const Text("合成中"),
-              content: Text("正在下载《${song.name}》"),
-              actions: [
-                ValueListenableBuilder<double>(
-                  builder: (c, v, w) {
-                    return ProgressBar(
-                      value: progress.value,
-                    );
-                  },
-                  valueListenable: progress,
-                )
-              ],
-            );
-          });
-      await dio
-          .downloadUri(Uri.parse(song.url!), "${cacheDir.path}/${song.id}.mp3",
-              onReceiveProgress: (int count, int total) {
-        progress.value = count / total * 100;
-      });
-      Navigator.pop(dialogContext);
-    } catch (e) {
-      Navigator.maybePop(dialogContext);
-      showDialog(
-          context: homeContext,
-          builder: (context) {
-            return ContentDialog(
-              title: const Text("出错啦！"),
-              content: Text("下载《${song.name}》时出现错误：\n$e\n点击空白处关闭"),
-            );
-          },
-          barrierDismissible: true);
-      e.printInfo();
-      e.printError();
-      return;
-    }
+    await downloadSong(song, homeContext).then((value) => ok = value);
+    if (!ok) return;
   }
   showDialog(
       context: homeContext,

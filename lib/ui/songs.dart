@@ -1,9 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:aria/utils.dart';
 import 'package:crypto/crypto.dart';
-import 'package:dio/dio.dart';
-import 'package:dio/io.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
@@ -128,68 +127,18 @@ class SongListState extends State<SongList> {
             onDoubleTap: () async {
               if (song.url == null || song.url!.startsWith("http")) {
                 if (!File("${cacheDir.path}/${song.id}.mp3").existsSync()) {
-                  late BuildContext dialog;
-                  ValueNotifier<double> progress = ValueNotifier(0);
-                  showDialog(
-                      context: context,
-                      builder: (dialogContext) {
-                        dialog = dialogContext;
-                        return ContentDialog(
-                          title: const Text("正在加载歌曲"),
-                          content: const Text("请稍等..."),
-                          actions: [
-                            ValueListenableBuilder<double>(
-                              builder: (c, v, w) {
-                                return ProgressBar(
-                                  value: progress.value,
-                                );
-                              },
-                              valueListenable: progress,
-                            )
-                          ],
-                        );
-                      });
-                  Dio dio = Dio();
-                  if (proxy != null) {
-                    dio.httpClientAdapter = IOHttpClientAdapter(
-                      onHttpClientCreate: (client) {
-                        client.findProxy = (uri) {
-                          return 'PROXY $proxy';
-                        };
-                        return client;
-                      },
-                    );
-                  }
                   bool ok = true;
-                  await netease.getSongInfo(song.id).then((value) async {
-                    Map<String, dynamic> map = jsonDecode(value.body);
-                    song.url = map["data"][0]["url"];
-                    if (song.url == null) {
-                      Navigator.pop(dialog);
-                      await showDialog(
-                          context: context,
-                          builder: (context) {
-                            return ContentDialog(
-                              title: const Text("出错啦！"),
-                              content: Text("怎么会混进《${song.name}》这首付费歌曲呢?"),
-                            );
-                          },
-                          barrierDismissible: true);
-
-                      ok = false;
-                    }
-                  });
+                  await initSong(song, context).then((value) => ok = value);
                   if (!ok) return;
-                  await dio.downloadUri(
-                      Uri.parse(song.url!), "${cacheDir.path}/${song.id}.mp3");
-                  Navigator.pop(dialog);
+                  await downloadSong(song, context).then((value) => ok = value);
+                  if (!ok) return;
                 }
                 await netease.getSongLyric(song.id).then((value) {
                   Map<String, dynamic> map = jsonDecode(value.body);
                   song.lyric = map["lyric"];
                 });
               }
-              homeKey.currentState?.editing =
+              homeKey.currentState?.playing =
                   projects[nowProject].songs.indexOf(song);
               homeKey.currentState?.setState(() {});
             },

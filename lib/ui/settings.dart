@@ -27,13 +27,17 @@ class SettingsState extends State<SettingsPage> {
         files.add(file);
       }
     });
+    TextEditingController controller = TextEditingController();
+    controller.text = proxy == null ? "" : proxy!;
     return ScaffoldPage.scrollable(children: [
       const Text("代理", style: TextStyle(fontSize: 34)),
       const SizedBox(
         height: 16,
       ),
-      const TextBox(
+      TextBox(
         placeholder: "地址",
+        controller: controller,
+        onChanged: (text) => proxy = text,
       ),
       const SizedBox(
         height: 30,
@@ -44,10 +48,11 @@ class SettingsState extends State<SettingsPage> {
       FilledButton(
           child: const Text("清除在线下载的缓存"),
           onPressed: () {
-            files.forEach((file) {
+            homeKey.currentState!.playing = -1;
+            for (var file in files) {
               file.deleteSync();
               setState(() {});
-            });
+            }
           }),
     ]);
   }
