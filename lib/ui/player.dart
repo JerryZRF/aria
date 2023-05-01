@@ -41,6 +41,7 @@ class EditorState extends State<EditorPage> with TickerProviderStateMixin {
         });
       }
     });
+    player.onPlayerComplete.listen((event) => icon.value = fluent.FluentIcons.play);
     player.onPositionChanged.listen((postion) async {
       print(postion);
       progress.value = postion.inMilliseconds / total * 100;
