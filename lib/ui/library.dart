@@ -15,23 +15,29 @@ class MusicLibrary extends StatefulWidget {
   State<MusicLibrary> createState() => _MusicLibraryState();
 }
 
+int _nowIndex = 1;
+String _nowValue = "";
+List<Song> songs = <Song>[];
+
 class _MusicLibraryState extends State<MusicLibrary> {
-  int _nowIndex = 1;
-  String _nowValue = "";
-  List<Song> songs = <Song>[];
   @override
   Widget build(BuildContext context) {
+    TextEditingController controller = TextEditingController();
+    controller.text = _nowValue;
     return Scaffold(
       backgroundColor: background,
       body: Column(
         children: [
-          SearchBarWidget(
-            onchangeValue: (value) {
-              _nowValue = value;
-            },
-            onEditingComplete: () {
-              search();
-            },
+          fluent.Container(
+            padding: const EdgeInsets.only(left: 25, right: 25, bottom: 25),
+            child: fluent.TextBox(
+              placeholder: "请输入你想搜索的歌曲",
+              controller: controller,
+              onSubmitted: (text) {
+                _nowValue = text;
+                search();
+              },
+            ),
           ),
           Expanded(
               child: ListView.builder(
@@ -40,7 +46,8 @@ class _MusicLibraryState extends State<MusicLibrary> {
                     return GestureDetector(
                         onTap: () {
                           projects[nowProject].songs.add(songs[index]);
-                          fluent.displayInfoBar(context, builder: (context, close) {
+                          fluent.displayInfoBar(context,
+                              builder: (context, close) {
                             return fluent.InfoBar(
                               title: Text("已加入《${songs[index].name}》"),
                               severity: fluent.InfoBarSeverity.success,
@@ -71,7 +78,10 @@ class _MusicLibraryState extends State<MusicLibrary> {
           BottomNavigationBarItem(
             icon: const Icon(Icons.music_note),
             label: "网易云",
-            activeIcon: Icon(Icons.music_note, color: button,),
+            activeIcon: Icon(
+              Icons.music_note,
+              color: button,
+            ),
           ),
         ],
         selectedLabelStyle: const TextStyle(fontFamily: "HYWenHei"),
@@ -102,6 +112,10 @@ class _MusicLibraryState extends State<MusicLibrary> {
   void search() {
     songs.clear();
     //TODO
+    if (_nowValue.isEmpty) {
+      setState(() {});
+      return;
+    }
     netease.searchSongs(_nowValue).then((value) {
       setState(() {
         Map<String, dynamic> map = json.decode(value.body);
@@ -126,117 +140,5 @@ class _MusicLibraryState extends State<MusicLibrary> {
         }
       });
     });
-  }
-}
-
-class SearchBarWidget extends StatefulWidget {
-  final ValueChanged<String> onchangeValue;
-  final VoidCallback onEditingComplete;
-  const SearchBarWidget(
-      {required this.onchangeValue, required this.onEditingComplete, Key? key})
-      : super(key: key);
-
-  @override
-  SearchBarWidgetState createState() => SearchBarWidgetState();
-}
-
-class SearchBarWidgetState extends State<SearchBarWidget> {
-  late TextEditingController _controller;
-
-  bool _hasDeleteIcon = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController();
-  }
-
-  Widget buildTextField() {
-    //theme设置局部主题
-    return TextField(
-      controller: _controller,
-      textInputAction: TextInputAction.search,
-      keyboardType: TextInputType.text,
-      maxLines: 1,
-      decoration: InputDecoration(
-        //输入框decoration属性
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 6, horizontal: 1.0),
-        //设置搜索图片
-        prefixIcon: const Icon(Icons.search),
-        prefixIconConstraints: const BoxConstraints(
-          //设置搜索图片左对齐
-          minWidth: 30,
-          minHeight: 25,
-        ),
-        border: InputBorder.none, //无边框
-        hintText: "请输入歌曲名",
-        hintStyle: const TextStyle(
-            fontSize: 15, color: Colors.grey, fontFamily: "HYWenHei"),
-        //设置清除按钮
-        suffixIcon: Container(
-          padding: EdgeInsetsDirectional.only(
-            start: 2.0,
-            end: _hasDeleteIcon ? 0.0 : 0,
-          ),
-          child: _hasDeleteIcon
-              ? InkWell(
-                  onTap: (() {
-                    setState(() {
-                      /// 保证在组件build的第一帧时才去触发取消清空内容
-                      WidgetsBinding.instance
-                          .addPostFrameCallback((_) => _controller.clear());
-                      _hasDeleteIcon = false;
-                    });
-                  }),
-                  child: const Icon(
-                    Icons.cancel,
-                    size: 18.0,
-                    color: Colors.grey,
-                  ),
-                )
-              : const Text(''),
-        ),
-      ),
-      onChanged: (value) {
-        setState(() {
-          if (value.isEmpty) {
-            _hasDeleteIcon = false;
-          } else {
-            _hasDeleteIcon = true;
-          }
-          widget.onchangeValue(_controller.text);
-        });
-      },
-      onEditingComplete: () {
-        FocusScope.of(context).requestFocus(FocusNode());
-        widget.onEditingComplete();
-      },
-      style: const TextStyle(
-          fontSize: 14, color: Colors.black, fontFamily: "HYWenHei"),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      //背景与圆角
-      margin: const EdgeInsets.only(left: 15, right: 15, bottom: 15),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.black12, width: 1.2), //边框
-        color: const Color(0xffc2ccd0),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      alignment: Alignment.center,
-      height: 36,
-      padding: const EdgeInsets.only(left: 10),
-      child: buildTextField(),
-    );
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    _controller.dispose();
   }
 }

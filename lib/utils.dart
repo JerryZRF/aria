@@ -121,18 +121,18 @@ Future<bool> downloadSong(Song song, BuildContext homeContext) async {
               valueListenable: progress,
             ),
             Container(
-              child: FilledButton(child: Text("取消"), onPressed: () {
+              child: FilledButton(child: const Text("取消"), onPressed: () {
                 if (progress.value != 1 && !cancelToken.isCancelled) {
                   cancelToken.cancel();
                   Navigator.pop(dialogContext!);
                 }
               }),
-              padding: EdgeInsets.only(left: 50),
+              padding: const EdgeInsets.only(left: 50),
             )
           ],
         );
       });
-  if (proxy != null) {
+  if (proxy != null && proxy!.isNotEmpty) {
     dio.httpClientAdapter = IOHttpClientAdapter(
       onHttpClientCreate: (client) {
         client.findProxy = (uri) {
