@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/material.dart';
+import 'package:mmoo_lyric/lyric.dart';
 import 'package:mmoo_lyric/lyric_controller.dart';
 import 'package:mmoo_lyric/lyric_util.dart';
 import 'package:mmoo_lyric/lyric_widget.dart';
@@ -41,13 +42,37 @@ class EditorState extends State<EditorPage> with TickerProviderStateMixin {
         });
       }
     });
-    player.onPlayerComplete.listen((event) => icon.value = fluent.FluentIcons.play);
-    player.onPositionChanged.listen((postion) async {
-      print(postion);
-      progress.value = postion.inMilliseconds / total * 100;
-      pos.value = postion;
-      controller.progress = postion;
+    player.onPlayerComplete
+        .listen((event) => icon.value = fluent.FluentIcons.play);
+    player.onPositionChanged.listen((position) async {
+      progress.value = position.inMilliseconds / total * 100;
+      pos.value = position;
+      controller.progress = position;
     });
+    List<Lyric>? lyrics;
+    if (widget.song.lyric != null) {
+      try {
+        lyrics = LyricUtil.formatLyric(widget.song.lyric!);
+      } catch (e) {
+        WidgetsBinding.instance
+            .addPostFrameCallback((_) => fluent.displayInfoBar(context,
+                builder: (context, close) => const fluent.InfoBar(
+                      title: Text("出错啦"),
+                      content: Text("加载歌词出错"),
+                      severity: fluent.InfoBarSeverity.error,
+                    ),
+                duration: const Duration(milliseconds: 1500)));
+      }
+    } else {
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => fluent.displayInfoBar(context,
+              builder: (context, close) => const fluent.InfoBar(
+                    title: Text("有点问题呢"),
+                    content: Text("未能获取到该音乐的歌词"),
+                    severity: fluent.InfoBarSeverity.warning,
+                  ),
+              duration: const Duration(milliseconds: 1500)));
+    }
     return fluent.ScaffoldPage(
       header: fluent.PageHeader(
           title: const fluent.Text("播放器"),
@@ -65,7 +90,7 @@ class EditorState extends State<EditorPage> with TickerProviderStateMixin {
         children: [
           fluent.Text(
             widget.song.name,
-            style: const fluent.TextStyle(fontSize: 26),
+            style: const fluent.TextStyle(fontSize: 25),
           ),
           fluent.Text(
             widget.song.author,
@@ -90,11 +115,11 @@ class EditorState extends State<EditorPage> with TickerProviderStateMixin {
               const SizedBox(
                 width: 75,
               ),
-              widget.song.lyric == null
+              lyrics == null
                   ? const SizedBox()
                   : LyricWidget(
                       size: const Size(450, 350),
-                      lyrics: LyricUtil.formatLyric(widget.song.lyric!),
+                      lyrics: lyrics,
                       controller: controller,
                     ),
             ],

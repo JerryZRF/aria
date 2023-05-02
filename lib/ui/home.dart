@@ -139,6 +139,7 @@ void generate(BuildContext homeContext) async {
       await listFile.writeAsString("file '${song.id}.mp3'\n",
           mode: FileMode.append);
       await initSong(song, homeContext).then((value) => ok = value); //获取下载链接
+      // sleep(const Duration(milliseconds: 75));
     } else {
       //本地歌曲
       await listFile.writeAsString("file '${song.url}'\n",
@@ -158,6 +159,7 @@ void generate(BuildContext homeContext) async {
   }
   showDialog(
       context: homeContext,
+      barrierColor: Colors.transparent,
       builder: (context) {
         dialogContext = context;
         return const ContentDialog(
@@ -204,6 +206,7 @@ void generate(BuildContext homeContext) async {
   //询问是否平衡
   bool? result = await showDialog<bool>(
     context: homeContext,
+    barrierColor: Colors.transparent,
     builder: (context) => ContentDialog(
       title: const Text(
         "平衡音量",
@@ -228,6 +231,7 @@ void generate(BuildContext homeContext) async {
     //显示平衡进度条
     showDialog(
         context: homeContext,
+        barrierColor: Colors.transparent,
         builder: (context) {
           dialogContext = context;
           return const ContentDialog(
@@ -284,6 +288,7 @@ void generate(BuildContext homeContext) async {
   }
   result = await showDialog<bool>(
       context: homeContext,
+      barrierColor: Colors.transparent,
       builder: (context) => ContentDialog(
             title: const Text(
               "完成",

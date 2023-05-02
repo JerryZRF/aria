@@ -115,8 +115,8 @@ class SongListState extends State<SongList> {
             child: Container(
               height: 40,
               width: double.infinity,
-              alignment: const Alignment(-0.97, 0),
               margin: const EdgeInsets.all(3),
+              padding: const EdgeInsets.only(left: 10, top: 11),
               decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10.0), color: item),
               child: Text(

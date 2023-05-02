@@ -18,15 +18,20 @@ class SettingsState extends State<SettingsPage> {
     int cacheSize = 0;
     int copySize = 0;
     List<FileSystemEntity> files = [];
-    cacheDir.listSync().forEach((file) {
-      FileStat stat = file.statSync();
-      if (file.path.split("\\").last.length == 36) {
-        copySize += stat.size;
-      } else {
-        cacheSize += stat.size;
-        files.add(file);
-      }
-    });
+    if (cacheDir.existsSync()) {
+      cacheDir.listSync().forEach((file) {
+        FileStat stat = file.statSync();
+        if (file.path
+            .split("\\")
+            .last
+            .length == 36) {
+          copySize += stat.size;
+        } else {
+          cacheSize += stat.size;
+          files.add(file);
+        }
+      });
+    }
     TextEditingController controller = TextEditingController();
     controller.text = proxy == null ? "" : proxy!;
     return ScaffoldPage.scrollable(children: [

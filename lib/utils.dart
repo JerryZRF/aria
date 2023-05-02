@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -63,28 +64,30 @@ void load() {
 }
 
 Future<bool> initSong(Song song, BuildContext homeContext) async {
-  late BuildContext dialogContext;
+  Completer<BuildContext> completer = Completer<BuildContext>();
   showDialog(
       context: homeContext,
+      barrierColor: Colors.transparent,
       builder: (context) {
-        dialogContext = context;
+        completer.complete(context);
         return ContentDialog(
           title: const Text("准备开始啦~"),
           content: Row(
-            children: const <Widget>[
-              Text("正在准备资源，很快就好啦~"),
-              Expanded(child: SizedBox()),
-              ProgressRing(),
+            children: <Widget>[
+              Expanded(
+                child: Text("正在准备\n《${song.name}》\n很快就好啦~"),
+              ),
+              const ProgressRing(),
             ],
           ),
         );
       });
   bool ok = true;
-  await netease.getSongInfo(song.id).then((value) {
+  await netease.getSongInfo(song.id).then((value) async {
     Map<String, dynamic> map = json.decode(value.body);
     song.url = map["data"][0]["url"];
+    await completer.future.then((dialogContext) => Navigator.pop(dialogContext));
     if (song.url == null) {
-      Navigator.pop(dialogContext);
       showDialog(
           context: homeContext,
           builder: (context) => ContentDialog(
@@ -95,19 +98,19 @@ Future<bool> initSong(Song song, BuildContext homeContext) async {
       ok = false;
     }
   });
-  Navigator.pop(dialogContext);
   return ok;
 }
 
 Future<bool> downloadSong(Song song, BuildContext homeContext) async {
-  BuildContext? dialogContext;
   ValueNotifier<double> progress = ValueNotifier(0);
   Dio dio = Dio();
   CancelToken cancelToken = CancelToken();
+  Completer<BuildContext> completer = Completer<BuildContext>();
   showDialog(
       context: homeContext,
+      barrierColor: Colors.transparent,
       builder: (context) {
-        dialogContext = context;
+        completer.complete(context);
         return ContentDialog(
           title: const Text("正在下载！"),
           content: Text("正在从网易云音乐的服务器上偷偷爬首\n《${song.name}》"),
@@ -121,13 +124,15 @@ Future<bool> downloadSong(Song song, BuildContext homeContext) async {
               valueListenable: progress,
             ),
             Container(
-              child: FilledButton(child: const Text("取消"), onPressed: () {
-                if (progress.value != 1 && !cancelToken.isCancelled) {
-                  cancelToken.cancel();
-                  Navigator.pop(dialogContext!);
-                }
-              }),
               padding: const EdgeInsets.only(left: 50),
+              child: FilledButton(
+                  child: const Text("取消"),
+                  onPressed: () async {
+                    if (progress.value != 1 && !cancelToken.isCancelled) {
+                      cancelToken.cancel();
+                      await completer.future.then((dialogContext) => Navigator.pop(dialogContext));
+                    }
+                  }),
             )
           ],
         );
@@ -150,8 +155,7 @@ Future<bool> downloadSong(Song song, BuildContext homeContext) async {
         cancelToken: cancelToken);
   } catch (e) {
     if (cancelToken.isCancelled) return false;
-    while (dialogContext == null) {}
-    Navigator.pop(dialogContext!);
+    await completer.future.then((dialogContext) => Navigator.pop(dialogContext));
     showDialog(
         context: homeContext,
         builder: (context) {
@@ -163,6 +167,6 @@ Future<bool> downloadSong(Song song, BuildContext homeContext) async {
         barrierDismissible: true);
     return false;
   }
-  Navigator.pop(dialogContext!);
+  await completer.future.then((dialogContext) => Navigator.pop(dialogContext));
   return true;
 }
