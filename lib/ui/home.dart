@@ -142,7 +142,7 @@ void generate(BuildContext homeContext) async {
       // sleep(const Duration(milliseconds: 75));
     } else {
       //本地歌曲
-      await listFile.writeAsString("file '${song.url}'\n",
+      await listFile.writeAsString("file '../${song.url}'\n",
           mode: FileMode.append);
     }
   }
